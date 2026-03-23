@@ -4,11 +4,15 @@
   "title": "ProofDAG",
   "type": "object",
   "additionalProperties": false,
-  "required": ["problem_id", "root_node", "target_node", "nodes", "edges"],
+  "required": ["problem_id", "backend", "root_node", "target_node", "nodes", "edges"],
   "properties": {
     "problem_id": {
       "type": "string",
-      "pattern": "^prob_[a-z0-9_]+$"
+      "pattern": "^prob_[\\w가-힣]+$"
+    },
+    "backend": {
+      "type": "string",
+      "enum": ["demo", "real", "unknown"]
     },
     "root_node": {
       "type": "string"

@@ -27,6 +27,7 @@ def prepare_project_root(tmp_path: Path) -> Path:
 def assert_paper_manifest_schema(payload: dict[str, object]) -> None:
     for key in [
         "problem_id",
+        "backend",
         "theorem_numbers",
         "equation_numbers",
         "reference_keys",
@@ -35,6 +36,9 @@ def assert_paper_manifest_schema(payload: dict[str, object]) -> None:
         "bib_file",
         "appendix_file",
         "pdf_file",
+        "pdf_build_attempted",
+        "pdf_build_success",
+        "pdf_artifact_kind",
     ]:
         assert key in payload
 
@@ -57,6 +61,7 @@ def test_paper_manifest_schema_validation(tmp_path):
     normalized = Normalizer(project_root).normalize(record)
     dag = ProofDAG(
         problem_id=record.problem_id,
+        backend="demo",
         root_node="n0",
         target_node="n1",
         nodes=[
@@ -65,9 +70,17 @@ def test_paper_manifest_schema_validation(tmp_path):
         ],
         edges=[{"from": "n0", "to": "n1"}],
     )
-    verification = VerificationReport(record.problem_id, True, [], [], {}, "ok")
+    verification = VerificationReport(
+        record.problem_id,
+        {"proof": "demo", "counterexample": "demo"},
+        True,
+        [],
+        [],
+        {},
+        "ok",
+    )
     formal = FormalizationReport(
-        record.problem_id, "x.lean", ["Mathlib"], 1, 0, ["o"], False, False, "x.log"
+        record.problem_id, "demo", "x.lean", ["Mathlib"], 1, 0, ["o"], False, False, "x.log", "skeleton_only"
     )
     manifest = PaperGenerator(project_root).generate(normalized, dag, verification, formal)
     assert_paper_manifest_schema(manifest.to_dict())

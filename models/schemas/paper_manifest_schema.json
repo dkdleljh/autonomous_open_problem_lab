@@ -6,6 +6,7 @@
   "additionalProperties": false,
   "required": [
     "problem_id",
+    "backend",
     "theorem_numbers",
     "equation_numbers",
     "reference_keys",
@@ -13,12 +14,19 @@
     "en_tex",
     "bib_file",
     "appendix_file",
-    "pdf_file"
+    "pdf_file",
+    "pdf_build_attempted",
+    "pdf_build_success",
+    "pdf_artifact_kind"
   ],
   "properties": {
     "problem_id": {
       "type": "string",
-      "pattern": "^prob_[a-z0-9_]+$"
+      "pattern": "^prob_[\\w가-힣]+$"
+    },
+    "backend": {
+      "type": "string",
+      "enum": ["demo", "real", "unknown"]
     },
     "theorem_numbers": {
       "type": "array",
@@ -54,6 +62,15 @@
       "type": "string"
     },
     "pdf_file": {
+      "type": "string"
+    },
+    "pdf_build_attempted": {
+      "type": "boolean"
+    },
+    "pdf_build_success": {
+      "type": "boolean"
+    },
+    "pdf_artifact_kind": {
       "type": "string"
     }
   }

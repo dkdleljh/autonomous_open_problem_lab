@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
-from aopl.core.io_utils import ensure_dir, read_text, write_json, write_text
+from aopl.core.config_store import ConfigStore
+from aopl.core.io_utils import ensure_dir, read_text, read_yaml, write_json, write_text
+from aopl.core.schema_utils import validate_schema
 from aopl.core.types import (
     FormalizationReport,
     NormalizedProblem,
@@ -35,12 +39,17 @@ def _build_minimal_pdf(path: Path, text: str) -> None:
 
 
 class PaperGenerator:
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, backend: str = "demo") -> None:
         self.root = root
+        self.backend = backend
+        self.config_store = ConfigStore(root)
         self.ko_dir = ensure_dir(root / "papers" / "ko")
         self.en_dir = ensure_dir(root / "papers" / "en")
         self.shared_dir = ensure_dir(root / "papers" / "shared")
         self.build_dir = ensure_dir(root / "papers" / "builds")
+        self.build_log_dir = ensure_dir(root / "papers" / "build_logs")
+        self.section_rules_file = root / "configs" / "paper" / "section_rules.yaml"
+        self.journal_style_file = root / "configs" / "paper" / "journal_style.yaml"
 
     def _semantic_graph(self, problem: NormalizedProblem, dag: ProofDAG) -> dict[str, Any]:
         theorem_numbers = ["정리 1", "보조정리 1", "보조정리 2"]
@@ -48,10 +57,67 @@ class PaperGenerator:
         node_titles = [node.title for node in dag.nodes]
         return {
             "problem_id": problem.problem_id,
+            "backend": self.backend,
             "theorem_numbers": theorem_numbers,
             "equation_numbers": equation_numbers,
             "node_titles": node_titles,
         }
+
+    def _journal_config(self) -> dict[str, Any]:
+        config = self.config_store.paper_journal_style()
+        return config if isinstance(config, dict) else {}
+
+    def _section_rules(self) -> dict[str, Any]:
+        config = self.config_store.paper_section_rules()
+        return config if isinstance(config, dict) else {}
+
+    def _latex_preamble(self, title: str) -> str:
+        journal = self._journal_config()
+        latex = journal.get("latex", {}) if isinstance(journal, dict) else {}
+        documentclass = "article"
+        font_size = "11pt"
+        packages = ["amsmath", "amsthm", "amssymb", "hyperref"]
+        if isinstance(latex, dict):
+            documentclass = str(latex.get("documentclass", documentclass))
+            font_size = str(latex.get("font_size", font_size))
+            raw_packages = latex.get("packages", packages)
+            if isinstance(raw_packages, list) and raw_packages:
+                packages = [str(item) for item in raw_packages]
+        return (
+            f"\\documentclass[{font_size}]{{{documentclass}}}\n"
+            + "\\usepackage{" + ",".join(packages) + "}\n"
+            + "\\title{" + title + "}\n"
+            + "\\author{Autonomous Open Problem Lab}\n"
+            + "\\date{\\today}\n"
+        )
+
+    def _counterexample_context(
+        self, verification: VerificationReport
+    ) -> tuple[int | None, int | None, str | None]:
+        payload = verification.counterexample_report
+        if not isinstance(payload, dict):
+            return None, None, None
+        explored_bound = payload.get("explored_bound")
+        seed = payload.get("seed")
+        checked_variant = payload.get("checked_variant")
+        return (
+            int(explored_bound) if isinstance(explored_bound, int) else None,
+            int(seed) if isinstance(seed, int) else None,
+            str(checked_variant) if isinstance(checked_variant, str) else None,
+        )
+
+    def _verification_summary(
+        self, verification: VerificationReport
+    ) -> tuple[int, int, str, str]:
+        critical_count = len(verification.critical_issues)
+        warning_count = len(verification.warnings)
+        critical_text = (
+            "; ".join(verification.critical_issues[:2]) if verification.critical_issues else "none"
+        )
+        warning_text = (
+            "; ".join(verification.warnings[:2]) if verification.warnings else "none"
+        )
+        return critical_count, warning_count, critical_text, warning_text
 
     def _reference_entries(self, problem: NormalizedProblem) -> tuple[list[str], str]:
         refs: list[str] = []
@@ -89,14 +155,10 @@ class PaperGenerator:
         semantic_graph: dict[str, Any],
         bib_file: str,
     ) -> str:
+        explored_bound, seed, checked_variant = self._counterexample_context(verification)
         return (
-            "\\documentclass[11pt]{article}\n"
-            "\\usepackage{amsmath,amsthm,amssymb}\n"
-            "\\usepackage{hyperref}\n"
-            "\\title{자동 탐색 기반 난제 연구 초안: " + problem.title + "}\n"
-            "\\author{Autonomous Open Problem Lab}\n"
-            "\\date{\\today}\n"
-            "\\begin{document}\n"
+            self._latex_preamble("자동 탐색 기반 난제 연구 초안: " + problem.title)
+            + "\\begin{document}\n"
             "\\maketitle\n"
             "\\section*{초록}\n"
             "본 문서는 자동 수집, 자동 정규화, 자동 반례 탐색, "
@@ -118,9 +180,12 @@ class PaperGenerator:
             + ("통과" if verification.passed else "실패")
             + "\\\n"
             "\\section{계산 검증}\n"
-            "탐색은 유한 범위와 seed를 기록하여 재현성을 보장한다.\\\n"
+            "탐색은 유한 범위와 seed를 기록하여 재현성을 보장한다. "
+            + f"bound={explored_bound}, seed={seed}, variant={checked_variant}.\\\n"
             "\\section{한계}\n"
-            "형식화 미해결 의무 수: " + str(len(formal_report.obligations_unresolved)) + "\\\n"
+            "형식화 미해결 의무 수: "
+            + str(len(formal_report.obligations_unresolved))
+            + f", artifact={formal_report.artifact_kind}, build_success={formal_report.build_success}.\\\n"
             "\\section{재현성}\n"
             "로그, 매니페스트, 체크섬을 함께 제공한다.\\\n"
             "\\bibliographystyle{plain}\n"
@@ -139,14 +204,10 @@ class PaperGenerator:
         semantic_graph: dict[str, Any],
         bib_file: str,
     ) -> str:
+        explored_bound, seed, checked_variant = self._counterexample_context(verification)
         return (
-            "\\documentclass[11pt]{article}\n"
-            "\\usepackage{amsmath,amsthm,amssymb}\n"
-            "\\usepackage{hyperref}\n"
-            "\\title{Automated Open Problem Workflow Draft: " + problem.title + "}\n"
-            "\\author{Autonomous Open Problem Lab}\n"
-            "\\date{\\today}\n"
-            "\\begin{document}\n"
+            self._latex_preamble("Automated Open Problem Workflow Draft: " + problem.title)
+            + "\\begin{document}\n"
             "\\maketitle\n"
             "\\section*{Abstract}\n"
             "This manuscript reports an unattended pipeline for harvesting, "
@@ -170,10 +231,12 @@ class PaperGenerator:
             + ("passed" if verification.passed else "failed")
             + "\\\n"
             "\\section{Computational Verification}\n"
-            "Search bounds, seeds, and timing are explicitly archived.\\\n"
+            "Search bounds, seeds, and timing are explicitly archived. "
+            + f"bound={explored_bound}, seed={seed}, variant={checked_variant}.\\\n"
             "\\section{Limitations}\n"
             "Unresolved formal obligations: "
             + str(len(formal_report.obligations_unresolved))
+            + f"; artifact={formal_report.artifact_kind}; build_success={formal_report.build_success}"
             + "\\\n"
             "\\section{Reproducibility}\n"
             "Artifacts include logs, manifest, and checksums.\\\n"
@@ -184,6 +247,39 @@ class PaperGenerator:
             "Formalization and execution traces are attached.\\\n"
             "\\end{document}\n"
         )
+
+    def _attempt_pdf_build(self, tex_path: Path) -> tuple[bool, bool]:
+        latexmk = shutil.which("latexmk")
+        pdflatex = shutil.which("pdflatex")
+        if latexmk is None and pdflatex is None:
+            return False, False
+        if latexmk is not None:
+            command = [
+                latexmk,
+                "-pdf",
+                "-interaction=nonstopmode",
+                "-halt-on-error",
+                f"-output-directory={self.build_dir}",
+                str(tex_path),
+            ]
+        else:
+            command = [
+                pdflatex,
+                "-interaction=nonstopmode",
+                "-halt-on-error",
+                f"-output-directory={self.build_dir}",
+                str(tex_path),
+            ]
+        run = subprocess.run(
+            command,
+            cwd=self.root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        log_path = self.build_log_dir / f"{tex_path.stem}_latex.log"
+        write_text(log_path, (run.stdout or "") + "\n" + (run.stderr or ""))
+        return True, run.returncode == 0
 
     def generate(
         self,
@@ -205,6 +301,10 @@ class PaperGenerator:
             f"# 재현성 부록\n\n"
             f"- 문제 식별자: {problem.problem_id}\n"
             f"- 검증 통과 여부: {verification.passed}\n"
+            f"- 검증 중대 이슈 수: {len(verification.critical_issues)}\n"
+            f"- 검증 경고 수: {len(verification.warnings)}\n"
+            f"- 검증 중대 이슈 요약: {'; '.join(verification.critical_issues[:2]) if verification.critical_issues else 'none'}\n"
+            f"- 검증 경고 요약: {'; '.join(verification.warnings[:2]) if verification.warnings else 'none'}\n"
             f"- 형식화 빌드 시도: {formal_report.build_attempted}\n"
             f"- 형식화 빌드 성공: {formal_report.build_success}\n"
             f"- 미해결 의무: {len(formal_report.obligations_unresolved)}\n"
@@ -223,10 +323,13 @@ class PaperGenerator:
         write_text(en_tex_path, en_tex)
 
         pdf_path = self.build_dir / f"{problem.problem_id}.pdf"
-        _build_minimal_pdf(pdf_path, f"{problem.problem_id} manuscript placeholder")
+        pdf_build_attempted, pdf_build_success = self._attempt_pdf_build(ko_tex_path)
+        if not pdf_build_success:
+            _build_minimal_pdf(pdf_path, f"{problem.problem_id} manuscript placeholder")
 
         manifest = PaperManifest(
             problem_id=problem.problem_id,
+            backend=self.backend,
             theorem_numbers=list(semantic_graph["theorem_numbers"]),
             equation_numbers=list(semantic_graph["equation_numbers"]),
             reference_keys=references,
@@ -235,13 +338,20 @@ class PaperGenerator:
             bib_file=str(bib_path.relative_to(self.root)),
             appendix_file=str(appendix_path.relative_to(self.root)),
             pdf_file=str(pdf_path.relative_to(self.root)),
+            pdf_build_attempted=pdf_build_attempted,
+            pdf_build_success=pdf_build_success,
+            pdf_artifact_kind="latex_build" if pdf_build_success else "placeholder_pdf",
         )
+        validate_schema(self.root, "paper_manifest_schema", manifest.to_dict())
         write_json(self.build_dir / f"{problem.problem_id}_paper_manifest.json", manifest.to_dict())
         return manifest
 
     def qa_check(self, manifest: PaperManifest) -> tuple[bool, str]:
         ko_text = read_text(self.root / manifest.ko_tex)
         en_text = read_text(self.root / manifest.en_tex)
+        rules = self._section_rules()
+        forbidden = rules.get("forbidden_expressions", []) if isinstance(rules, dict) else []
+        checks = rules.get("checks", {}) if isinstance(rules, dict) else {}
         for number in manifest.theorem_numbers:
             if number not in ko_text:
                 return False, f"한국어 논문에 정리 번호 누락: {number}"
@@ -252,4 +362,141 @@ class PaperGenerator:
         appendix_path = self.root / manifest.appendix_file
         if not appendix_path.exists():
             return False, "재현성 부록 파일 누락"
+        appendix_text = read_text(appendix_path)
+        for phrase in forbidden if isinstance(forbidden, list) else []:
+            if isinstance(phrase, str) and phrase and phrase in ko_text:
+                return False, f"한국어 논문에 금지 표현 포함: {phrase}"
+        if isinstance(checks, dict) and checks.get("require_seed_and_bounds", False):
+            if "seed=" not in ko_text or "bound=" not in ko_text:
+                return False, "한국어 논문에 seed/bound 정보 누락"
+            if "seed=" not in en_text or "bound=" not in en_text:
+                return False, "영어 논문에 seed/bound 정보 누락"
+        if isinstance(checks, dict) and checks.get("require_counterexample_scope", False):
+            if "variant=" not in ko_text:
+                return False, "한국어 논문에 반례 탐색 범위 정보 누락"
+            if "variant=" not in en_text:
+                return False, "영어 논문에 반례 탐색 범위 정보 누락"
+        if isinstance(checks, dict) and checks.get("require_formalization_status", False):
+            if "artifact=" not in ko_text or "artifact=" not in en_text:
+                return False, "형식화 상태 정보 누락"
+        if "검증 중대 이슈 수:" not in appendix_text or "검증 경고 수:" not in appendix_text:
+            return False, "재현성 부록에 검증 요약 누락"
         return True, "논문 QA 통과"
+
+
+class DemoPaperGenerator(PaperGenerator):
+    def __init__(self, root: Path) -> None:
+        super().__init__(root, backend="demo")
+
+
+class RealPaperGenerator(PaperGenerator):
+    def __init__(self, root: Path) -> None:
+        super().__init__(root, backend="real")
+
+    def _section_line(self, title: str, body: str) -> str:
+        return f"\\section{{{title}}}\n{body}\\\n"
+
+    def _build_ko_tex(
+        self,
+        problem: NormalizedProblem,
+        verification: VerificationReport,
+        formal_report: FormalizationReport,
+        semantic_graph: dict[str, Any],
+        bib_file: str,
+    ) -> str:
+        node_titles = semantic_graph.get("node_titles", [])
+        node_summary = ", ".join(str(item) for item in node_titles[:4]) if isinstance(node_titles, list) else ""
+        theorem_numbers = semantic_graph.get("theorem_numbers", [])
+        theorem_sync = ", ".join(str(item) for item in theorem_numbers) if isinstance(theorem_numbers, list) else ""
+        required_sections = self._section_rules().get("required_sections", [])
+        section_hint = ", ".join(str(item) for item in required_sections[:5]) if isinstance(required_sections, list) else ""
+        explored_bound, seed, checked_variant = self._counterexample_context(verification)
+        critical_count, warning_count, critical_text, warning_text = self._verification_summary(
+            verification
+        )
+        return (
+            self._latex_preamble("연구 파이프라인 기반 초안: " + problem.title)
+            + "\\begin{document}\n"
+            + "\\maketitle\n"
+            + "\\section*{초록}\n"
+            + "본 초안은 정규화 결과, proof DAG, 형식화 상태를 직접 반영한다.\\\n"
+            + self._section_line("배경", f"문제 식별자 {problem.problem_id}, 도메인 {problem.domain}.")
+            + self._section_line("관련 연구", "등록된 참고문헌과 문제 출처를 기준으로 연구 맥락을 정리한다.")
+            + self._section_line(
+                "정의와 표기",
+                f"객체 {', '.join(problem.objects)} 와 표기 {', '.join(problem.notation_map.keys())}. 번호 동기화: {theorem_sync}.",
+            )
+            + self._section_line("핵심 아이디어", problem.target)
+            + self._section_line("보조정리", f"보조정리 1, 보조정리 2를 포함한 proof DAG 노드: {node_summary}.")
+            + self._section_line("주정리", f"정리 1. {problem.target}")
+            + self._section_line(
+                "증명",
+                "증명 개요는 proof DAG 순서를 따르며 검증 상태는 "
+                + ("통과" if verification.passed else "실패")
+                + f" 이다. critical={critical_count}, warnings={warning_count}.",
+            )
+            + self._section_line(
+                "계산 검증",
+                f"재현성 요구 섹션 힌트: {section_hint}. 형식화 아티팩트 유형: {formal_report.artifact_kind}. bound={explored_bound}, seed={seed}, variant={checked_variant}. verifier_warning={warning_text}.",
+            )
+            + self._section_line(
+                "한계",
+                f"형식화 성공 여부 {formal_report.build_success}, 미해결 obligation {len(formal_report.obligations_unresolved)}, artifact={formal_report.artifact_kind}, verifier_critical={critical_text}.",
+            )
+            + self._section_line("재현성", "로그, 매니페스트, 체크섬, 형식화 보고서를 함께 보관한다.")
+            + "\\bibliographystyle{plain}\n"
+            + "\\bibliography{" + bib_file + "}\n"
+            + "\\appendix\n"
+            + "\\section{부록}\n"
+            + "proof DAG 및 형식화 보고서 요약을 첨부한다.\\\n"
+            + "\\end{document}\n"
+        )
+
+    def _build_en_tex(
+        self,
+        problem: NormalizedProblem,
+        verification: VerificationReport,
+        formal_report: FormalizationReport,
+        semantic_graph: dict[str, Any],
+        bib_file: str,
+    ) -> str:
+        node_titles = semantic_graph.get("node_titles", [])
+        node_summary = ", ".join(str(item) for item in node_titles[:4]) if isinstance(node_titles, list) else ""
+        explored_bound, seed, checked_variant = self._counterexample_context(verification)
+        critical_count, warning_count, critical_text, warning_text = self._verification_summary(
+            verification
+        )
+        return (
+            self._latex_preamble("Research Pipeline Draft: " + problem.title)
+            + "\\begin{document}\n"
+            + "\\maketitle\n"
+            + "\\section*{Abstract}\n"
+            + "This draft reflects normalized data, proof DAG structure, and formalization status.\\\n"
+            + self._section_line("Background", f"Problem identifier {problem.problem_id} in domain {problem.domain}.")
+            + self._section_line("Related Work", "The manuscript is grounded in the registered references and source records.")
+            + self._section_line("Definitions and Notation", f"Objects: {', '.join(problem.objects)}.")
+            + self._section_line("Core Idea", problem.target)
+            + self._section_line("Lemmas", f"Proof DAG nodes: {node_summary}.")
+            + self._section_line("Main Theorem", f"Theorem 1. {problem.target}")
+            + self._section_line(
+                "Proof",
+                "The proof outline follows the DAG order and the verification result is "
+                + ("passed" if verification.passed else "failed")
+                + f". critical={critical_count}; warnings={warning_count}.",
+            )
+            + self._section_line(
+                "Computational Verification",
+                f"Formal artifact kind: {formal_report.artifact_kind}; unresolved obligations: {len(formal_report.obligations_unresolved)}; artifact={formal_report.artifact_kind}; bound={explored_bound}; seed={seed}; variant={checked_variant}; verifier_warning={warning_text}.",
+            )
+            + self._section_line(
+                "Limitations",
+                f"This draft preserves explicit formalization gaps instead of hiding them. verifier_critical={critical_text}.",
+            )
+            + self._section_line("Reproducibility", "Logs, manifests, and formalization reports are archived together.")
+            + "\\bibliographystyle{plain}\n"
+            + "\\bibliography{" + bib_file + "}\n"
+            + "\\appendix\n"
+            + "\\section{Appendix}\n"
+            + "Proof DAG and formalization summaries are attached.\\\n"
+            + "\\end{document}\n"
+        )

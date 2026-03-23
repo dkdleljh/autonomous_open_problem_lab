@@ -1,64 +1,22 @@
 from __future__ import annotations
 
-from collections import defaultdict, deque
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from aopl.apps.counterexample_engine import CounterexampleEngine
-from aopl.apps.formalizer import Formalizer
 from aopl.apps.harvester import Harvester
 from aopl.apps.normalizer import Normalizer
-from aopl.apps.paper_generator import PaperGenerator
-from aopl.apps.proof_engine import ProofEngine
 from aopl.apps.registry import Registry
 from aopl.apps.scorer import Scorer
 from aopl.apps.submission_builder import SubmissionBuilder
 from aopl.apps.verifier import Verifier
+from aopl.core.config_store import ConfigStore
+from aopl.core.gates import GatePolicy
 from aopl.core.io_utils import append_jsonl, ensure_dir, now_utc_iso, read_yaml, write_json
+from aopl.core.schema_utils import validate_schema
 from aopl.core.state_machine import StageMachine
 from aopl.core.types import PipelineStage, StageEvent
-
-
-def _is_dag(nodes: list[str], edges: list[tuple[str, str]]) -> bool:
-    adjacency: dict[str, list[str]] = defaultdict(list)
-    for src, dst in edges:
-        adjacency[src].append(dst)
-    color: dict[str, int] = dict.fromkeys(nodes, 0)
-
-    def dfs(node: str) -> bool:
-        color[node] = 1
-        for nxt in adjacency.get(node, []):
-            if color.get(nxt, 0) == 1:
-                return False
-            if color.get(nxt, 0) == 0 and not dfs(nxt):
-                return False
-        color[node] = 2
-        return True
-
-    for node in nodes:
-        if color.get(node, 0) == 0 and not dfs(node):
-            return False
-    return True
-
-
-def _has_path(start: str, target: str, edges: list[tuple[str, str]]) -> bool:
-    if start == target:
-        return True
-    adjacency: dict[str, list[str]] = defaultdict(list)
-    for src, dst in edges:
-        adjacency[src].append(dst)
-    queue = deque([start])
-    visited: set[str] = {start}
-    while queue:
-        node = queue.popleft()
-        for nxt in adjacency.get(node, []):
-            if nxt == target:
-                return True
-            if nxt not in visited:
-                visited.add(nxt)
-                queue.append(nxt)
-    return False
+from aopl.services.engine_factory import EngineFactory
 
 
 class Orchestrator:
@@ -68,15 +26,38 @@ class Orchestrator:
         self.registry = Registry(root)
         self.normalizer = Normalizer(root)
         self.scorer = Scorer(root)
-        self.counterexample_engine = CounterexampleEngine(root)
-        self.proof_engine = ProofEngine(root)
         self.verifier = Verifier(root)
-        self.formalizer = Formalizer(root)
-        self.paper_generator = PaperGenerator(root)
         self.submission_builder = SubmissionBuilder(root)
         self.stage_machine = StageMachine()
         self.audit_log_file = ensure_dir(root / "data" / "audit_logs") / "pipeline_audit.jsonl"
-        self.runtime_config = read_yaml(root / "configs" / "global" / "runtime.yaml", default={})
+        self.config_store = ConfigStore(root)
+        self.runtime_config = self.config_store.runtime()
+        self.gates = GatePolicy(root, self.runtime_config)
+        engine_factory = EngineFactory(root, self.runtime_config)
+        self.engine_backends = engine_factory.backend_summary()
+        self.counterexample_engine = engine_factory.counterexample_engine()
+        self.proof_engine = engine_factory.proof_engine()
+        self.formalizer = engine_factory.formalizer()
+        self.paper_generator = engine_factory.paper_generator()
+
+    def _provenance_metadata(self, record: Any) -> dict[str, Any]:
+        provenance = record.metadata.get("provenance", {}) if hasattr(record, "metadata") else {}
+        if not isinstance(provenance, dict):
+            provenance = {}
+        return {
+            "harvest_batch_id": provenance.get("harvest_batch_id"),
+            "harvested_at": provenance.get("harvested_at"),
+            "source_signature": provenance.get("source_signature"),
+            "candidate_hash": provenance.get("candidate_hash"),
+        }
+
+    def _verification_metadata(self, verification: Any) -> dict[str, Any]:
+        return {
+            "verification_passed": verification.passed,
+            "verification_gate_reason": verification.gate_reason,
+            "critical_issue_count": len(verification.critical_issues),
+            "warning_count": len(verification.warnings),
+        }
 
     def _event(
         self,
@@ -96,71 +77,9 @@ class Orchestrator:
             timestamp=now_utc_iso(),
             metadata=metadata or {},
         )
-        append_jsonl(self.audit_log_file, event.to_dict())
-
-    def _harvest_gate(self, sources: list[dict[str, Any]]) -> tuple[bool, str, dict[str, Any]]:
-        min_reliability = (
-            self.runtime_config.get("gates", {}).get("harvest_min_reliability", 0.75)
-            if isinstance(self.runtime_config, dict)
-            else 0.75
-        )
-        reliabilities = [float(source.get("reliability", 0.0)) for source in sources]
-        if not reliabilities:
-            return False, "출처가 없어 Harvest Gate 실패", {"average_reliability": 0.0}
-        avg = sum(reliabilities) / len(reliabilities)
-        if avg < min_reliability:
-            return (
-                False,
-                "출처 신뢰도 임계값 미달",
-                {"average_reliability": avg, "threshold": min_reliability},
-            )
-        return True, "Harvest Gate 통과", {"average_reliability": avg, "threshold": min_reliability}
-
-    def _normalize_gate(self, normalized: dict[str, Any]) -> tuple[bool, str]:
-        has_objects = bool(normalized.get("objects"))
-        has_assumptions = bool(normalized.get("assumptions"))
-        has_target = bool(normalized.get("target"))
-        if has_objects and has_assumptions and has_target:
-            return True, "Normalize Gate 통과"
-        return False, "정의, 가정, 목표 분리 실패"
-
-    def _proof_integrity_gate(self, dag_dict: dict[str, Any]) -> tuple[bool, str]:
-        edge_pairs: list[tuple[str, str]] = []
-        for edge in dag_dict.get("edges", []):
-            edge_pairs.append((edge["from"], edge["to"]))
-        root_node = dag_dict.get("root_node")
-        target_node = dag_dict.get("target_node")
-        node_ids = [
-            node.get("node_id") for node in dag_dict.get("nodes", []) if isinstance(node, dict)
-        ]
-        node_ids = [node_id for node_id in node_ids if isinstance(node_id, str)]
-        if root_node is None or target_node is None:
-            return False, "proof DAG 루트 또는 목표 노드 누락"
-        if not _is_dag(node_ids, edge_pairs):
-            return False, "proof DAG 순환 감지"
-        if not _has_path(root_node, target_node, edge_pairs):
-            return False, "proof DAG 단절"
-        return True, "Proof Integrity Gate 통과"
-
-    def _formalization_gate(self, unresolved_count: int) -> tuple[bool, str]:
-        threshold_file = self.root / "configs" / "formalization" / "obligation_thresholds.yaml"
-        threshold_config = read_yaml(threshold_file, default={})
-        max_allowed = 12
-        if isinstance(threshold_config, dict):
-            max_allowed = int(threshold_config.get("max_unresolved_obligations", 12))
-        if unresolved_count > max_allowed:
-            return False, "미해결 obligation 과다로 Formalization Gate 보류"
-        return True, "Formalization Gate 통과"
-
-    def _release_gate(self, submission_dict: dict[str, Any]) -> tuple[bool, str]:
-        required = ["package_file", "source_bundle_file", "checksum_file", "release_notes_file"]
-        for key in required:
-            value = submission_dict.get(key)
-            if not value:
-                return False, f"Release Gate 실패: {key} 누락"
-            if not (self.root / value).exists():
-                return False, f"Release Gate 실패: {value} 파일 누락"
-        return True, "Release Gate 통과"
+        payload = event.to_dict()
+        validate_schema(self.root, "stage_event_schema", payload)
+        append_jsonl(self.audit_log_file, payload)
 
     def run(self, limit: int | None = None) -> dict[str, Any]:
         harvested_candidates = self.harvester.harvest()
@@ -168,18 +87,31 @@ class Orchestrator:
         if limit is not None:
             records = records[:limit]
 
-        run_summary: dict[str, Any] = {"processed": [], "blocked": []}
+        run_summary: dict[str, Any] = {
+            "engine_backends": dict(self.engine_backends),
+            "stats": {
+                "total_records": len(records),
+                "processed_count": 0,
+                "blocked_count": 0,
+                "released_problem_ids": [],
+                "verification_critical_issue_total": 0,
+                "verification_warning_total": 0,
+            },
+            "processed": [],
+            "blocked": [],
+        }
         for record in records:
             current_stage = PipelineStage.REGISTERED
+            base_metadata = self._provenance_metadata(record)
 
-            harvest_passed, harvest_reason, harvest_meta = self._harvest_gate(record.sources)
+            harvest_passed, harvest_reason, harvest_meta = self.gates.harvest(record.sources)
             self._event(
                 record.problem_id,
                 current_stage,
                 "Harvest Gate",
                 harvest_passed,
                 harvest_reason,
-                harvest_meta,
+                {**base_metadata, **harvest_meta},
             )
             transition = self.stage_machine.transition(
                 current_stage, harvest_passed, harvest_reason
@@ -191,18 +123,20 @@ class Orchestrator:
                 run_summary["blocked"].append(
                     {"problem_id": record.problem_id, "reason": harvest_reason}
                 )
+                run_summary["stats"]["blocked_count"] += 1
                 continue
             current_stage = transition.next_stage
             self.registry.update_status(record.problem_id, current_stage, harvest_reason)
 
             normalized = self.normalizer.normalize(record)
-            normalize_passed, normalize_reason = self._normalize_gate(normalized.to_dict())
+            normalize_passed, normalize_reason = self.gates.normalize(normalized.to_dict())
             self._event(
                 record.problem_id,
                 current_stage,
                 "Normalize Gate",
                 normalize_passed,
                 normalize_reason,
+                base_metadata,
             )
             transition = self.stage_machine.transition(
                 current_stage, normalize_passed, normalize_reason
@@ -214,6 +148,7 @@ class Orchestrator:
                 run_summary["blocked"].append(
                     {"problem_id": record.problem_id, "reason": normalize_reason}
                 )
+                run_summary["stats"]["blocked_count"] += 1
                 continue
             current_stage = transition.next_stage
             self.registry.update_status(record.problem_id, current_stage, normalize_reason)
@@ -227,7 +162,7 @@ class Orchestrator:
                 "Score Gate",
                 score_passed,
                 score_reason,
-                score.to_dict(),
+                {**base_metadata, **score.to_dict()},
             )
             transition = self.stage_machine.transition(current_stage, score_passed, score_reason)
             if transition.blocked:
@@ -235,6 +170,7 @@ class Orchestrator:
                 run_summary["blocked"].append(
                     {"problem_id": record.problem_id, "reason": score_reason}
                 )
+                run_summary["stats"]["blocked_count"] += 1
                 continue
             current_stage = transition.next_stage
             self.registry.update_status(record.problem_id, current_stage, score_reason)
@@ -256,7 +192,7 @@ class Orchestrator:
                 "Counterexample Gate",
                 counterexample_passed,
                 counterexample_reason,
-                counterexample_report.to_dict(),
+                {**base_metadata, **counterexample_report.to_dict()},
             )
             transition = self.stage_machine.transition(
                 current_stage, counterexample_passed, counterexample_reason
@@ -268,14 +204,25 @@ class Orchestrator:
                 run_summary["blocked"].append(
                     {"problem_id": record.problem_id, "reason": counterexample_reason}
                 )
+                run_summary["stats"]["blocked_count"] += 1
                 continue
             current_stage = transition.next_stage
             self.registry.update_status(record.problem_id, current_stage, counterexample_reason)
 
-            dag = self.proof_engine.build(normalized)
-            proof_passed, proof_reason = self._proof_integrity_gate(dag.to_dict())
+            dag = self.proof_engine.build(normalized, counterexample_report)
+            proof_passed, proof_reason = self.gates.proof_integrity(dag.to_dict())
             self._event(
-                record.problem_id, current_stage, "Proof Integrity Gate", proof_passed, proof_reason
+                record.problem_id,
+                current_stage,
+                "Proof Integrity Gate",
+                proof_passed,
+                proof_reason,
+                {
+                    **base_metadata,
+                    "proof_backend": dag.backend,
+                    "proof_node_count": len(dag.nodes),
+                    "proof_edge_count": len(dag.edges),
+                },
             )
             transition = self.stage_machine.transition(current_stage, proof_passed, proof_reason)
             if transition.blocked:
@@ -283,12 +230,20 @@ class Orchestrator:
                 run_summary["blocked"].append(
                     {"problem_id": record.problem_id, "reason": proof_reason}
                 )
+                run_summary["stats"]["blocked_count"] += 1
                 continue
             current_stage = transition.next_stage
             self.registry.update_status(record.problem_id, current_stage, proof_reason)
 
             draft_reason = "proof 초안 생성 완료"
-            self._event(record.problem_id, current_stage, "Draft Gate", True, draft_reason)
+            self._event(
+                record.problem_id,
+                current_stage,
+                "Draft Gate",
+                True,
+                draft_reason,
+                {**base_metadata, "proof_backend": dag.backend},
+            )
             transition = self.stage_machine.transition(current_stage, True, draft_reason)
             current_stage = transition.next_stage
             self.registry.update_status(record.problem_id, current_stage, draft_reason)
@@ -301,7 +256,7 @@ class Orchestrator:
                 "Verification Gate",
                 verification.passed,
                 verify_reason,
-                verification.to_dict(),
+                {**base_metadata, **verification.to_dict(), **self._verification_metadata(verification)},
             )
             transition = self.stage_machine.transition(
                 current_stage, verification.passed, verify_reason
@@ -311,12 +266,13 @@ class Orchestrator:
                 run_summary["blocked"].append(
                     {"problem_id": record.problem_id, "reason": verify_reason}
                 )
+                run_summary["stats"]["blocked_count"] += 1
                 continue
             current_stage = transition.next_stage
             self.registry.update_status(record.problem_id, current_stage, verify_reason)
 
             formal_report = self.formalizer.generate(normalized, dag)
-            formal_passed, formal_reason = self._formalization_gate(
+            formal_passed, formal_reason = self.gates.formalization(
                 len(formal_report.obligations_unresolved)
             )
             self._event(
@@ -325,7 +281,7 @@ class Orchestrator:
                 "Formalization Gate",
                 formal_passed,
                 formal_reason,
-                formal_report.to_dict(),
+                {**base_metadata, **self._verification_metadata(verification), **formal_report.to_dict()},
             )
             transition = self.stage_machine.transition(current_stage, formal_passed, formal_reason)
             if transition.blocked:
@@ -333,6 +289,7 @@ class Orchestrator:
                 run_summary["blocked"].append(
                     {"problem_id": record.problem_id, "reason": formal_reason}
                 )
+                run_summary["stats"]["blocked_count"] += 1
                 continue
             current_stage = transition.next_stage
             self.registry.update_status(record.problem_id, current_stage, formal_reason)
@@ -341,7 +298,17 @@ class Orchestrator:
                 normalized, dag, verification, formal_report
             )
             self._event(
-                record.problem_id, current_stage, "Paper Draft Gate", True, "논문 초안 생성 완료"
+                record.problem_id,
+                current_stage,
+                "Paper Draft Gate",
+                True,
+                "논문 초안 생성 완료",
+                {
+                    **base_metadata,
+                    **self._verification_metadata(verification),
+                    "paper_backend": paper_manifest.backend,
+                    "pdf_artifact_kind": paper_manifest.pdf_artifact_kind,
+                },
             )
             transition = self.stage_machine.transition(current_stage, True, "논문 초안 생성 완료")
             current_stage = transition.next_stage
@@ -349,7 +316,17 @@ class Orchestrator:
 
             paper_passed, paper_reason = self.paper_generator.qa_check(paper_manifest)
             self._event(
-                record.problem_id, current_stage, "Paper QA Gate", paper_passed, paper_reason
+                record.problem_id,
+                current_stage,
+                "Paper QA Gate",
+                paper_passed,
+                paper_reason,
+                {
+                    **base_metadata,
+                    **self._verification_metadata(verification),
+                    "paper_backend": paper_manifest.backend,
+                    "pdf_artifact_kind": paper_manifest.pdf_artifact_kind,
+                },
             )
             transition = self.stage_machine.transition(current_stage, paper_passed, paper_reason)
             if transition.blocked:
@@ -357,21 +334,52 @@ class Orchestrator:
                 run_summary["blocked"].append(
                     {"problem_id": record.problem_id, "reason": paper_reason}
                 )
+                run_summary["stats"]["blocked_count"] += 1
                 continue
             current_stage = transition.next_stage
             self.registry.update_status(record.problem_id, current_stage, paper_reason)
 
-            submission_manifest = self.submission_builder.build(paper_manifest)
+            submission_manifest = self.submission_builder.build(
+                paper_manifest, verification, formal_report
+            )
             self._event(
-                record.problem_id, current_stage, "Submission Gate", True, "제출 패키지 생성 완료"
+                record.problem_id,
+                current_stage,
+                "Submission Gate",
+                True,
+                "제출 패키지 생성 완료",
+                {
+                    **base_metadata,
+                    **submission_manifest.verification_summary,
+                    "release_notes_file": submission_manifest.release_notes_file,
+                    "package_file": submission_manifest.package_file,
+                },
             )
             transition = self.stage_machine.transition(current_stage, True, "제출 패키지 생성 완료")
             current_stage = transition.next_stage
             self.registry.update_status(record.problem_id, current_stage, "제출 패키지 생성 완료")
 
-            release_passed, release_reason = self._release_gate(submission_manifest.to_dict())
+            release_passed, release_reason = self.gates.release(
+                submission_manifest.to_dict(),
+                paper_manifest.to_dict(),
+                record.metadata,
+                verification.to_dict(),
+                formal_report.to_dict(),
+            )
             self._event(
-                record.problem_id, current_stage, "Release Gate", release_passed, release_reason
+                record.problem_id,
+                current_stage,
+                "Release Gate",
+                release_passed,
+                release_reason,
+                {
+                    **base_metadata,
+                    **submission_manifest.verification_summary,
+                    "release_notes_file": submission_manifest.release_notes_file,
+                    "package_file": submission_manifest.package_file,
+                    "paper_pdf_artifact_kind": paper_manifest.pdf_artifact_kind,
+                    "formalization_artifact_kind": formal_report.artifact_kind,
+                },
             )
             transition = self.stage_machine.transition(
                 current_stage, release_passed, release_reason
@@ -383,20 +391,53 @@ class Orchestrator:
                 run_summary["blocked"].append(
                     {"problem_id": record.problem_id, "reason": release_reason}
                 )
+                run_summary["stats"]["blocked_count"] += 1
                 continue
             current_stage = PipelineStage.RELEASED
             self.registry.update_status(record.problem_id, current_stage, release_reason)
+            run_summary["stats"]["processed_count"] += 1
+            run_summary["stats"]["released_problem_ids"].append(record.problem_id)
+            run_summary["stats"]["verification_critical_issue_total"] += len(
+                verification.critical_issues
+            )
+            run_summary["stats"]["verification_warning_total"] += len(verification.warnings)
 
             run_summary["processed"].append(
                 {
                     "problem_id": record.problem_id,
                     "final_stage": current_stage.value,
                     "score": score.score,
+                    "provenance_summary": {
+                        "harvest_batch_id": record.metadata.get("provenance", {}).get(
+                            "harvest_batch_id"
+                        ),
+                        "harvested_at": record.metadata.get("provenance", {}).get("harvested_at"),
+                        "source_signature": record.metadata.get("provenance", {}).get(
+                            "source_signature"
+                        ),
+                        "candidate_hash": record.metadata.get("provenance", {}).get(
+                            "candidate_hash"
+                        ),
+                    },
+                    "backend_summary": {
+                        **verification.backend_summary,
+                        "formalizer": formal_report.backend,
+                        "paper_generator": paper_manifest.backend,
+                    },
+                    "artifact_summary": {
+                        "formalization_artifact_kind": formal_report.artifact_kind,
+                        "paper_pdf_artifact_kind": paper_manifest.pdf_artifact_kind,
+                        "paper_pdf_build_success": paper_manifest.pdf_build_success,
+                    },
+                    "verification_summary": submission_manifest.verification_summary,
+                    "verification": verification.to_dict(),
+                    "formalization_report": formal_report.to_dict(),
                     "paper_manifest": asdict(paper_manifest),
                     "submission_manifest": asdict(submission_manifest),
                 }
             )
 
         summary_path = self.root / "data" / "audit_logs" / "last_run_summary.json"
+        validate_schema(self.root, "run_summary_schema", run_summary)
         write_json(summary_path, run_summary)
         return run_summary

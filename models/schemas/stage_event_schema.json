@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/stage_event_schema.json",
+  "title": "StageEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "problem_id",
+    "stage",
+    "gate_name",
+    "passed",
+    "reason",
+    "timestamp",
+    "metadata"
+  ],
+  "properties": {
+    "problem_id": {
+      "type": "string",
+      "pattern": "^prob_[\\w가-힣]+$"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "REGISTERED",
+        "HARVESTED",
+        "NORMALIZED",
+        "SCORED",
+        "SELECTED",
+        "COUNTEREXAMPLE_CHECKED",
+        "LEMMA_GRAPH_BUILT",
+        "DRAFT_PROOF_CREATED",
+        "INTERNAL_VERIFICATION_PASSED",
+        "FORMALIZATION_ATTEMPTED",
+        "PAPER_DRAFT_GENERATED",
+        "PAPER_QA_PASSED",
+        "SUBMISSION_PACKAGE_READY",
+        "RELEASED",
+        "BLOCKED"
+      ]
+    },
+    "gate_name": {
+      "type": "string",
+      "minLength": 3
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 2
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 10
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

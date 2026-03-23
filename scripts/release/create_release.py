@@ -77,6 +77,9 @@ def ensure_repo(repo: Path) -> None:
 
 
 def verify_before_release(repo: Path, python_exec: str) -> None:
+    mode = os.environ.get("AOPL_RELEASE_MODE", "local")
+    profile = "github_release" if mode == "github" else "local"
+    run([python_exec, "-m", "aopl", "doctor", "--root", ".", "--profile", profile, "--strict"], repo)
     run([python_exec, "-m", "pytest", "-q"], repo)
     run([python_exec, "-m", "aopl", "run-all", "--limit", "1"], repo)
 
@@ -120,6 +123,7 @@ def main() -> None:
 
     repo = Path(__file__).resolve().parents[2]
     ensure_repo(repo)
+    os.environ["AOPL_RELEASE_MODE"] = args.mode
     verify_before_release(repo, args.python)
 
     current = parse_version(latest_tag(repo))

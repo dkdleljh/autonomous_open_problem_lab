@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/status_history_schema.json",
+  "title": "StatusHistory",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["problem_id", "from", "to", "timestamp", "reason", "metadata"],
+    "properties": {
+      "problem_id": {
+        "type": "string",
+        "pattern": "^prob_[\\w가-힣]+$"
+      },
+      "from": {
+        "type": ["string", "null"]
+      },
+      "to": {
+        "type": "string",
+        "enum": [
+          "REGISTERED",
+          "HARVESTED",
+          "NORMALIZED",
+          "SCORED",
+          "SELECTED",
+          "COUNTEREXAMPLE_CHECKED",
+          "LEMMA_GRAPH_BUILT",
+          "DRAFT_PROOF_CREATED",
+          "INTERNAL_VERIFICATION_PASSED",
+          "FORMALIZATION_ATTEMPTED",
+          "PAPER_DRAFT_GENERATED",
+          "PAPER_QA_PASSED",
+          "SUBMISSION_PACKAGE_READY",
+          "RELEASED",
+          "BLOCKED"
+        ]
+      },
+      "timestamp": {
+        "type": "string",
+        "minLength": 10
+      },
+      "reason": {
+        "type": "string",
+        "minLength": 2
+      },
+      "metadata": {
+        "type": "object"
+      }
+    }
+  }
+}

@@ -34,6 +34,14 @@ jobs:
           pip install -r requirements.txt
           pip install -e .[dev]
 
+      - name: 운영 준비도 strict 검사
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+        run: python -m aopl doctor --root . --profile github_release --strict
+
       - name: 테스트 실행
         run: pytest -q
 

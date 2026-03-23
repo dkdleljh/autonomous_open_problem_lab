@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/run_summary_schema.json",
+  "title": "RunSummary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["engine_backends", "stats", "processed", "blocked"],
+  "properties": {
+    "engine_backends": {
+      "type": "object",
+      "required": ["counterexample", "proof", "formalizer", "paper_generator"],
+      "properties": {
+        "counterexample": {
+          "type": "string",
+          "enum": ["demo", "real"]
+        },
+        "proof": {
+          "type": "string",
+          "enum": ["demo", "real"]
+        },
+        "formalizer": {
+          "type": "string",
+          "enum": ["demo", "real"]
+        },
+        "paper_generator": {
+          "type": "string",
+          "enum": ["demo", "real"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "stats": {
+      "type": "object",
+      "required": [
+        "total_records",
+        "processed_count",
+        "blocked_count",
+        "released_problem_ids",
+        "verification_critical_issue_total",
+        "verification_warning_total"
+      ],
+      "properties": {
+        "total_records": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "processed_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "released_problem_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^prob_[\\w가-힣]+$"
+          }
+        },
+        "verification_critical_issue_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verification_warning_total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "processed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "problem_id",
+          "final_stage",
+          "score",
+          "provenance_summary",
+          "backend_summary",
+          "artifact_summary",
+          "verification_summary",
+          "verification",
+          "formalization_report",
+          "paper_manifest",
+          "submission_manifest"
+        ],
+        "properties": {
+          "problem_id": {
+            "type": "string",
+            "pattern": "^prob_[\\w가-힣]+$"
+          },
+          "final_stage": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "provenance_summary": {
+            "type": "object",
+            "required": ["harvest_batch_id", "harvested_at", "source_signature", "candidate_hash"],
+            "properties": {
+              "harvest_batch_id": {"type": ["string", "null"]},
+              "harvested_at": {"type": ["string", "null"]},
+              "source_signature": {"type": ["string", "null"]},
+              "candidate_hash": {"type": ["string", "null"]}
+            },
+            "additionalProperties": false
+          },
+          "backend_summary": {
+            "type": "object"
+          },
+          "artifact_summary": {
+            "type": "object"
+          },
+          "verification_summary": {
+            "type": "object"
+          },
+          "verification": {
+            "type": "object"
+          },
+          "formalization_report": {
+            "type": "object"
+          },
+          "paper_manifest": {
+            "type": "object"
+          },
+          "submission_manifest": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "blocked": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["problem_id", "reason"],
+        "properties": {
+          "problem_id": {
+            "type": "string",
+            "pattern": "^prob_[\\w가-힣]+$"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

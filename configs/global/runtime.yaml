@@ -7,6 +7,11 @@ resource_budget:
   cpu_minutes_per_problem: 20
   memory_mb_per_problem: 2048
   wall_clock_minutes_per_problem: 45
+engines:
+  counterexample_backend: demo
+  proof_backend: demo
+  formalizer_backend: demo
+  paper_generator_backend: demo
 gates:
   harvest_min_reliability: 0.75
   paper_require_bilingual_sync: true
@@ -16,3 +21,8 @@ auto_stop_conditions:
   reference_conflict_critical: true
   formalization_collapse_critical: true
   counterexample_on_strong_form_critical: true
+release:
+  allow_demo_release: false
+  require_formal_build_success: true
+  require_pdf_build_success: true
+  require_verification_pass: true

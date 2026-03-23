@@ -22,10 +22,12 @@ def main() -> None:
     parser.add_argument("--message", default="chore: 자동 업데이트 반영")
     parser.add_argument("--push", action="store_true")
     parser.add_argument("--tag-release", action="store_true")
+    parser.add_argument("--release-mode", choices=["local", "github"], default="local")
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parents[2]
     commands = [
+        [args.python, "-m", "aopl", "doctor", "--root", ".", "--profile", "local", "--strict"],
         [args.python, "-m", "pytest", "-q"],
         [args.python, "-m", "aopl", "run-all", "--limit", "1"],
         ["git", "add", "-A"],
@@ -50,7 +52,7 @@ def main() -> None:
                 args.python,
                 "scripts/release/create_release.py",
                 "--mode",
-                "local",
+                args.release_mode,
                 "--bump",
                 "patch",
             ],
@@ -62,7 +64,7 @@ def main() -> None:
                 args.python,
                 "scripts/release/create_release.py",
                 "--mode",
-                "local",
+                args.release_mode,
                 "--bump",
                 "patch",
             ],

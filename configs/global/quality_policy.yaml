@@ -1,0 +1,39 @@
+doctor:
+  default_profile: local
+  profiles:
+    local:
+      min_score: 100
+      required_checks:
+        - 프로젝트 루트
+        - git 저장소
+        - 원격 origin
+        - 현재 브랜치
+        - 워킹트리 청결
+        - pytest 사용 가능
+        - 핵심 한글 문서
+        - GitHub 워크플로우
+    ci:
+      min_score: 100
+      required_checks:
+        - 프로젝트 루트
+        - git 저장소
+        - 원격 origin
+        - 현재 브랜치
+        - 워킹트리 청결
+        - pytest 사용 가능
+        - 핵심 한글 문서
+        - GitHub 워크플로우
+    github_release:
+      min_score: 100
+      required_checks:
+        - 프로젝트 루트
+        - git 저장소
+        - 원격 origin
+        - 현재 브랜치
+        - 워킹트리 청결
+        - pytest 사용 가능
+        - GitHub CLI
+        - GITHUB_TOKEN
+        - GITHUB_REPOSITORY
+        - 핵심 한글 문서
+        - GitHub 워크플로우

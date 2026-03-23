@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from aopl.core.io_utils import ensure_dir, now_utc_iso, read_json, slugify, write_json
+from aopl.core.io_utils import ensure_dir, now_utc_iso, read_json, sha256_json, slugify, write_json
 
 DEFAULT_SOURCE_PAYLOAD: list[dict[str, Any]] = [
     {
@@ -39,6 +39,7 @@ DEFAULT_SOURCE_PAYLOAD: list[dict[str, Any]] = [
         "metadata": {
             "tags": ["counterexample", "decomposition", "formalization_friendly"],
             "toy_counterexample_rule": "none",
+            "demo_mode": True,
         },
     },
     {
@@ -65,6 +66,7 @@ DEFAULT_SOURCE_PAYLOAD: list[dict[str, Any]] = [
         "metadata": {
             "tags": ["modular", "weak_form", "searchable"],
             "toy_counterexample_rule": "strong_variant_false_small_n",
+            "demo_mode": True,
         },
     },
 ]
@@ -86,19 +88,46 @@ class Harvester:
         loaded = read_json(self.sample_file, default=[])
         if not isinstance(loaded, list):
             raise ValueError("수집 원본 파일 형식이 잘못되어 목록으로 읽을 수 없습니다.")
+        harvested_at = now_utc_iso()
+        batch_id = f"harvest_{harvested_at.replace(':', '-').replace('+00:00', 'Z')}"
 
         deduped: list[dict[str, Any]] = []
         seen: set[str] = set()
-        for entry in loaded:
+        for index, entry in enumerate(loaded, start=1):
             key = slugify(entry.get("title", "")) + "_" + slugify(entry.get("statement", ""))
             if key in seen:
                 continue
             seen.add(key)
             payload = dict(entry)
-            payload["harvested_at"] = now_utc_iso()
+            sources = payload.get("sources", [])
+            source_hashes: list[str] = []
+            if isinstance(sources, list):
+                normalized_sources = []
+                for source_index, source in enumerate(sources, start=1):
+                    if not isinstance(source, dict):
+                        continue
+                    source_payload = dict(source)
+                    source_payload["source_index"] = source_index
+                    source_hash = sha256_json(source_payload)
+                    source_payload["source_hash"] = source_hash
+                    normalized_sources.append(source_payload)
+                    source_hashes.append(source_hash)
+                payload["sources"] = normalized_sources
+            payload["harvested_at"] = harvested_at
+            payload["harvest_batch_id"] = batch_id
+            payload["harvest_entry_index"] = index
+            payload["source_hashes"] = source_hashes
+            payload["source_signature"] = sha256_json(
+                {
+                    "title": payload.get("title", ""),
+                    "statement": payload.get("statement", ""),
+                    "sources": payload.get("sources", []),
+                }
+            )
+            payload["candidate_hash"] = sha256_json(payload)
             deduped.append(payload)
 
-        snapshot_name = f"harvest_snapshot_{now_utc_iso().replace(':', '-')}".replace("+00-00", "Z")
+        snapshot_name = f"harvest_snapshot_{harvested_at.replace(':', '-')}".replace("+00-00", "Z")
         write_json(self.raw_dir / f"{snapshot_name}.json", deduped)
         write_json(self.raw_dir / "latest_harvest.json", deduped)
         return deduped

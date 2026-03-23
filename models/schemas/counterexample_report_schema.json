@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/counterexample_report_schema.json",
+  "title": "CounterexampleReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "problem_id",
+    "backend",
+    "checked_variant",
+    "found_counterexample",
+    "counterexample",
+    "explored_bound",
+    "seed",
+    "elapsed_seconds",
+    "weak_variant_recommendation"
+  ],
+  "properties": {
+    "problem_id": {
+      "type": "string",
+      "pattern": "^prob_[\\w가-힣]+$"
+    },
+    "backend": {
+      "type": "string",
+      "enum": ["demo", "real", "unknown"]
+    },
+    "checked_variant": {
+      "type": "string"
+    },
+    "found_counterexample": {
+      "type": "boolean"
+    },
+    "counterexample": {
+      "type": ["object", "null"]
+    },
+    "explored_bound": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "elapsed_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "weak_variant_recommendation": {
+      "type": ["string", "null"]
+    }
+  }
+}

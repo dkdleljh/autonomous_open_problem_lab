@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from aopl.core.io_utils import ensure_dir, write_json
+from aopl.core.schema_utils import validate_schema
 from aopl.core.types import NormalizedProblem, ProblemRecord
 
 
@@ -54,5 +55,6 @@ class Normalizer:
             source_problem=problem.to_dict(),
         )
 
+        validate_schema(self.root, "normalized_problem_schema", normalized.to_dict())
         write_json(self.out_dir / f"{problem.problem_id}_normalized.json", normalized.to_dict())
         return normalized

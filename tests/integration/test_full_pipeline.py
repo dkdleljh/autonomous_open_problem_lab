@@ -21,3 +21,5 @@ def test_full_pipeline_runs(tmp_path):
     assert "processed" in summary
     assert "blocked" in summary
     assert len(summary["processed"]) + len(summary["blocked"]) >= 1
+    assert not summary["processed"]
+    assert summary["blocked"]

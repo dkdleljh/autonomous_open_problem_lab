@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 from aopl.apps.submission_builder import SubmissionBuilder
-from aopl.core.types import PaperManifest
+from aopl.core.types import FormalizationReport, PaperManifest, VerificationReport
 
 
 def prepare_project_root(tmp_path: Path) -> Path:
@@ -43,6 +43,7 @@ def test_checksum_file_created(tmp_path):
 
     paper_manifest = PaperManifest(
         problem_id="prob_checksum",
+        backend="demo",
         theorem_numbers=["정리 1"],
         equation_numbers=["(1)"],
         reference_keys=["ref1"],
@@ -51,11 +52,40 @@ def test_checksum_file_created(tmp_path):
         bib_file=str(bib.relative_to(project_root)),
         appendix_file=str(appendix.relative_to(project_root)),
         pdf_file=str(pdf.relative_to(project_root)),
+        pdf_build_attempted=True,
+        pdf_build_success=True,
+        pdf_artifact_kind="latex_build",
+    )
+    verification = VerificationReport(
+        problem_id="prob_checksum",
+        backend_summary={"proof": "demo", "counterexample": "demo"},
+        passed=True,
+        critical_issues=[],
+        warnings=["demo backend 사용"],
+        counterexample_report={},
+        gate_reason="ok",
+    )
+    formal_report = FormalizationReport(
+        problem_id="prob_checksum",
+        backend="demo",
+        lean_file="formal/generated_skeletons/prob_checksum.lean",
+        imports=["Mathlib"],
+        obligations_total=1,
+        obligations_resolved=0,
+        obligations_unresolved=["ob1"],
+        build_attempted=False,
+        build_success=False,
+        build_log_file="formal/proof_obligations/prob_checksum.log",
+        artifact_kind="skeleton_only",
     )
 
-    submission = SubmissionBuilder(project_root).build(paper_manifest)
+    submission = SubmissionBuilder(project_root).build(
+        paper_manifest, verification, formal_report
+    )
     checksum_path = project_root / submission.checksum_file
 
     assert checksum_path.exists()
     lines = checksum_path.read_text(encoding="utf-8").strip().splitlines()
     assert len(lines) >= 2
+    assert submission.verification_summary["warning_count"] == 1
+    assert submission.artifact_summary["formalization_artifact_kind"] == "skeleton_only"

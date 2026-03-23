@@ -77,6 +77,11 @@ def sha256_file(path: Path) -> str:
     return hash_obj.hexdigest()
 
 
+def sha256_json(payload: Any) -> str:
+    serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
 def write_text(path: Path, text: str) -> None:
     ensure_dir(path.parent)
     with path.open("w", encoding="utf-8") as file:

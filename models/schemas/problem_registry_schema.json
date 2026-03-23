@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/problem_registry_schema.json",
+  "title": "ProblemRegistry",
+  "type": "array",
+  "items": {
+    "$ref": "problem_schema.json"
+  }
+}

@@ -93,6 +93,7 @@ class ScoreCard:
 @dataclass
 class CounterexampleReport:
     problem_id: str
+    backend: str
     checked_variant: str
     found_counterexample: bool
     counterexample: dict[str, Any] | None
@@ -118,6 +119,7 @@ class ProofNode:
 @dataclass
 class ProofDAG:
     problem_id: str
+    backend: str
     root_node: str
     target_node: str
     nodes: list[ProofNode]
@@ -126,6 +128,7 @@ class ProofDAG:
     def to_dict(self) -> dict[str, Any]:
         return {
             "problem_id": self.problem_id,
+            "backend": self.backend,
             "root_node": self.root_node,
             "target_node": self.target_node,
             "nodes": [asdict(node) for node in self.nodes],
@@ -136,6 +139,7 @@ class ProofDAG:
 @dataclass
 class VerificationReport:
     problem_id: str
+    backend_summary: dict[str, str]
     passed: bool
     critical_issues: list[str]
     warnings: list[str]
@@ -149,6 +153,7 @@ class VerificationReport:
 @dataclass
 class FormalizationReport:
     problem_id: str
+    backend: str
     lean_file: str
     imports: list[str]
     obligations_total: int
@@ -157,6 +162,7 @@ class FormalizationReport:
     build_attempted: bool
     build_success: bool
     build_log_file: str
+    artifact_kind: str
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -165,6 +171,7 @@ class FormalizationReport:
 @dataclass
 class PaperManifest:
     problem_id: str
+    backend: str
     theorem_numbers: list[str]
     equation_numbers: list[str]
     reference_keys: list[str]
@@ -173,6 +180,9 @@ class PaperManifest:
     bib_file: str
     appendix_file: str
     pdf_file: str
+    pdf_build_attempted: bool
+    pdf_build_success: bool
+    pdf_artifact_kind: str
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -186,6 +196,9 @@ class SubmissionManifest:
     checksum_file: str
     release_notes_file: str
     included_files: list[str]
+    backend_summary: dict[str, str]
+    artifact_summary: dict[str, Any]
+    verification_summary: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

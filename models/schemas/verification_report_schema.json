@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/verification_report_schema.json",
+  "title": "VerificationReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "problem_id",
+    "backend_summary",
+    "passed",
+    "critical_issues",
+    "warnings",
+    "counterexample_report",
+    "gate_reason"
+  ],
+  "properties": {
+    "problem_id": {
+      "type": "string",
+      "pattern": "^prob_[\\w가-힣]+$"
+    },
+    "backend_summary": {
+      "type": "object",
+      "required": ["proof", "counterexample"],
+      "properties": {
+        "proof": {
+          "type": "string",
+          "enum": ["demo", "real", "unknown"]
+        },
+        "counterexample": {
+          "type": "string",
+          "enum": ["demo", "real", "unknown"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "critical_issues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "counterexample_report": {
+      "type": "object",
+      "required": [
+        "problem_id",
+        "backend",
+        "checked_variant",
+        "found_counterexample",
+        "counterexample",
+        "explored_bound",
+        "seed",
+        "elapsed_seconds",
+        "weak_variant_recommendation"
+      ],
+      "properties": {
+        "problem_id": {
+          "type": "string",
+          "pattern": "^prob_[\\w가-힣]+$"
+        },
+        "backend": {
+          "type": "string",
+          "enum": ["demo", "real", "unknown"]
+        },
+        "checked_variant": {
+          "type": "string"
+        },
+        "found_counterexample": {
+          "type": "boolean"
+        },
+        "counterexample": {
+          "type": ["object", "null"]
+        },
+        "explored_bound": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "elapsed_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "weak_variant_recommendation": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "gate_reason": {
+      "type": "string"
+    }
+  }
+}

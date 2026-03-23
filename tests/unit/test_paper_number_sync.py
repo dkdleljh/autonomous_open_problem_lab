@@ -5,6 +5,7 @@ from pathlib import Path
 
 from aopl.apps.normalizer import Normalizer
 from aopl.apps.paper_generator import PaperGenerator
+from aopl.core.io_utils import read_text
 from aopl.core.types import (
     FormalizationReport,
     PipelineStage,
@@ -42,6 +43,7 @@ def test_paper_number_sync(tmp_path):
     normalized = Normalizer(project_root).normalize(record)
     dag = ProofDAG(
         problem_id=record.problem_id,
+        backend="demo",
         root_node="n0",
         target_node="n1",
         nodes=[
@@ -52,14 +54,26 @@ def test_paper_number_sync(tmp_path):
     )
     verification = VerificationReport(
         problem_id=record.problem_id,
+        backend_summary={"proof": "demo", "counterexample": "demo"},
         passed=True,
         critical_issues=[],
         warnings=[],
-        counterexample_report={},
+        counterexample_report={
+            "problem_id": record.problem_id,
+            "backend": "demo",
+            "checked_variant": "strong_variant",
+            "found_counterexample": False,
+            "counterexample": None,
+            "explored_bound": 12,
+            "seed": 20260324,
+            "elapsed_seconds": 0.1,
+            "weak_variant_recommendation": None,
+        },
         gate_reason="ok",
     )
     formal_report = FormalizationReport(
         problem_id=record.problem_id,
+        backend="demo",
         lean_file="formal/generated_skeletons/x.lean",
         imports=["Mathlib"],
         obligations_total=1,
@@ -68,10 +82,16 @@ def test_paper_number_sync(tmp_path):
         build_attempted=False,
         build_success=False,
         build_log_file="formal/proof_obligations/x.log",
+        artifact_kind="skeleton_only",
     )
 
     generator = PaperGenerator(project_root)
     manifest = generator.generate(normalized, dag, verification, formal_report)
+    appendix_text = read_text(project_root / manifest.appendix_file)
+    manifest.pdf_build_attempted = True
+    manifest.pdf_build_success = True
+    manifest.pdf_artifact_kind = "latex_build"
     passed, reason = generator.qa_check(manifest)
 
     assert passed is True, reason
+    assert "검증 중대 이슈 수: 0" in appendix_text

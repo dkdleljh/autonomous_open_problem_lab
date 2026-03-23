@@ -36,3 +36,4 @@ def test_problem_schema_validation(tmp_path):
     harvested = Harvester(project_root).harvest()
     records = Registry(project_root).register(harvested)
     assert_problem_schema(records[0].to_dict())
+    assert "provenance" in records[0].metadata

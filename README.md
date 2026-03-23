@@ -59,7 +59,12 @@ python3 -m venv .venv
 .venv/bin/aopl formalize --root .
 .venv/bin/aopl paper --root .
 .venv/bin/aopl submission --root .
+.venv/bin/aopl doctor --root .
+.venv/bin/aopl doctor --root . --profile local --strict
 ```
+
+`doctor`는 현재 환경에서 무인 운영, 릴리즈, 문서, 외부 도구 준비 상태를 점검한다.
+`doctor --strict`는 활성 프로필의 필수 항목이 100점을 만들지 못하면 종료 코드 1로 실패한다.
 
 ## 주요 모듈 설명
 
@@ -113,7 +118,7 @@ python3 -m venv .venv
 - 로컬 자동 릴리즈: `scripts/release/create_release.py`
 - 자동 업데이트: `scripts/release/auto_update.py`
 
-`create_release.py`는 테스트, 파이프라인 실행, 버전 계산, 태그 생성, 릴리즈 노트 생성을 자동화한다. 원격 인증이 없는 경우 로컬 태그와 노트만 생성하고 안내 메시지를 출력한다.
+`create_release.py`는 먼저 `doctor --strict`로 운영 준비도 100점을 확인한 뒤 테스트, 파이프라인 실행, 버전 계산, 태그 생성, 릴리즈 노트 생성을 자동화한다. 원격 인증이 없는 경우 로컬 태그와 노트만 생성하고 안내 메시지를 출력한다.
 
 ## GitHub 연동
 
@@ -144,6 +149,8 @@ python3 scripts/release/create_release.py --mode github --bump patch
 
 - 기본 데이터 저장소는 SQLite 또는 JSON 파일 기반 시작 구성이며 대규모 분산 환경은 후속 확장 대상이다.
 - Lean 전체 프로젝트 빌드는 로컬 Lean 설치 여부에 따라 자동 시도 후 결과를 보고서에 기록한다.
+- 이 시스템은 "모든 수학 난제를 자동으로 해결하는 완성형 엔진"이 아니다.
+- 이 시스템의 현재 강점은 연구 파이프라인 자동화, 추적성, 감사 가능성, 제출 아티팩트 생성이다.
 
 ## 향후 개선 방향
 
@@ -152,3 +159,8 @@ python3 scripts/release/create_release.py --mode github --bump patch
 - 다중 형식검증기 연동
 - 원격 계산 노드 스케줄러 확장
 - 저널별 제출 규격 프로파일 추가
+
+## 현실 점검 문서
+
+- 현재 수준 점검: `PROGRAM_REALITY_CHECK_KO.md`
+- 100점 로드맵: `PROGRAM_100_SCORE_ROADMAP_KO.md`

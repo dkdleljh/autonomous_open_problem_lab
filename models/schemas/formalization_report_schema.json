@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/formalization_report_schema.json",
+  "title": "FormalizationReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "problem_id",
+    "backend",
+    "lean_file",
+    "imports",
+    "obligations_total",
+    "obligations_resolved",
+    "obligations_unresolved",
+    "build_attempted",
+    "build_success",
+    "build_log_file",
+    "artifact_kind"
+  ],
+  "properties": {
+    "problem_id": {
+      "type": "string",
+      "pattern": "^prob_[\\w가-힣]+$"
+    },
+    "backend": {
+      "type": "string",
+      "enum": ["demo", "real", "unknown"]
+    },
+    "lean_file": {
+      "type": "string"
+    },
+    "imports": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "obligations_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "obligations_resolved": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "obligations_unresolved": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "build_attempted": {
+      "type": "boolean"
+    },
+    "build_success": {
+      "type": "boolean"
+    },
+    "build_log_file": {
+      "type": "string"
+    },
+    "artifact_kind": {
+      "type": "string"
+    }
+  }
+}

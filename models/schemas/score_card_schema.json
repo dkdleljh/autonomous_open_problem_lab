@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/score_card_schema.json",
+  "title": "ScoreCard",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "problem_id",
+    "formalizability",
+    "decomposability",
+    "library_fit",
+    "counterexample_searchability",
+    "paperability",
+    "score",
+    "selected",
+    "rationale"
+  ],
+  "properties": {
+    "problem_id": {
+      "type": "string",
+      "pattern": "^prob_[\\w가-힣]+$"
+    },
+    "formalizability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "decomposability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "library_fit": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "counterexample_searchability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "paperability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "selected": {
+      "type": "boolean"
+    },
+    "rationale": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

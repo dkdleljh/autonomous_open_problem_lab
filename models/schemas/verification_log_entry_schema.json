@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/verification_log_entry_schema.json",
+  "title": "VerificationLogEntry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "problem_id",
+    "timestamp",
+    "passed",
+    "gate_reason",
+    "critical_issue_count",
+    "warning_count",
+    "critical_issues",
+    "warnings",
+    "backend_summary",
+    "provenance_summary"
+  ],
+  "properties": {
+    "problem_id": {
+      "type": "string",
+      "pattern": "^prob_[\\w가-힣]+$"
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 10
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "gate_reason": {
+      "type": "string"
+    },
+    "critical_issue_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "warning_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "critical_issues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "backend_summary": {
+      "type": "object",
+      "required": ["proof", "counterexample"],
+      "properties": {
+        "proof": {
+          "type": "string",
+          "enum": ["demo", "real", "unknown"]
+        },
+        "counterexample": {
+          "type": "string",
+          "enum": ["demo", "real", "unknown"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "provenance_summary": {
+      "type": "object",
+      "required": ["source_signature", "candidate_hash"],
+      "properties": {
+        "source_signature": {
+          "type": ["string", "null"]
+        },
+        "candidate_hash": {
+          "type": ["string", "null"]
+        },
+        "harvest_batch_id": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

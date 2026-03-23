@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/submission_manifest_schema.json",
+  "title": "SubmissionManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "problem_id",
+    "package_file",
+    "source_bundle_file",
+    "checksum_file",
+    "release_notes_file",
+    "included_files",
+    "backend_summary",
+    "artifact_summary",
+    "verification_summary"
+  ],
+  "properties": {
+    "problem_id": {
+      "type": "string",
+      "pattern": "^prob_[\\w가-힣]+$"
+    },
+    "package_file": {
+      "type": "string"
+    },
+    "source_bundle_file": {
+      "type": "string"
+    },
+    "checksum_file": {
+      "type": "string"
+    },
+    "release_notes_file": {
+      "type": "string"
+    },
+    "included_files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "backend_summary": {
+      "type": "object",
+      "required": ["paper_generator"],
+      "properties": {
+        "paper_generator": {
+          "type": "string",
+          "enum": ["demo", "real", "unknown"]
+        },
+        "formalizer": {
+          "type": "string",
+          "enum": ["demo", "real", "unknown"]
+        },
+        "proof": {
+          "type": "string",
+          "enum": ["demo", "real", "unknown"]
+        },
+        "counterexample": {
+          "type": "string",
+          "enum": ["demo", "real", "unknown"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "artifact_summary": {
+      "type": "object",
+      "required": [
+        "pdf_artifact_kind",
+        "pdf_build_attempted",
+        "pdf_build_success",
+        "formalization_artifact_kind",
+        "formal_build_success"
+      ],
+      "properties": {
+        "pdf_artifact_kind": {
+          "type": "string"
+        },
+        "pdf_build_attempted": {
+          "type": "boolean"
+        },
+        "pdf_build_success": {
+          "type": "boolean"
+        },
+        "formalization_artifact_kind": {
+          "type": "string"
+        },
+        "formal_build_success": {
+          "type": ["boolean", "null"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "verification_summary": {
+      "type": "object",
+      "required": [
+        "passed",
+        "gate_reason",
+        "critical_issue_count",
+        "warning_count",
+        "critical_issue_preview",
+        "warning_preview"
+      ],
+      "properties": {
+        "passed": {
+          "type": ["boolean", "null"]
+        },
+        "gate_reason": {
+          "type": "string"
+        },
+        "critical_issue_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warning_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "critical_issue_preview": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "warning_preview": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -28,6 +28,14 @@ jobs:
       - name: 정적 검사
         run: ruff check aopl tests scripts
 
+      - name: 운영 준비도 strict 검사
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+        run: python -m aopl doctor --root . --profile ci --strict
+
       - name: 테스트 실행
         run: pytest -q
 
