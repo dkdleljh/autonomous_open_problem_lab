@@ -80,7 +80,17 @@ def test_paper_manifest_schema_validation(tmp_path):
         "ok",
     )
     formal = FormalizationReport(
-        record.problem_id, "demo", "x.lean", ["Mathlib"], 1, 0, ["o"], False, False, "x.log", "skeleton_only"
+        record.problem_id,
+        "demo",
+        "x.lean",
+        ["Mathlib"],
+        1,
+        0,
+        ["o"],
+        False,
+        False,
+        "x.log",
+        "skeleton_only",
     )
     manifest = PaperGenerator(project_root).generate(normalized, dag, verification, formal)
     assert_paper_manifest_schema(manifest.to_dict())

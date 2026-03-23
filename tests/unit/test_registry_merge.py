@@ -70,8 +70,12 @@ def test_registry_and_history_files_are_schema_valid(tmp_path):
     records = registry.register(harvested)
     registry.update_status(records[0].problem_id, PipelineStage.BLOCKED, "schema validation")
 
-    registry_payload = read_json(project_root / "data" / "registry" / "problem_registry.json", default=[])
-    history_payload = read_json(project_root / "data" / "registry" / "status_history.json", default=[])
+    registry_payload = read_json(
+        project_root / "data" / "registry" / "problem_registry.json", default=[]
+    )
+    history_payload = read_json(
+        project_root / "data" / "registry" / "status_history.json", default=[]
+    )
 
     validate_schema(project_root, "problem_registry_schema", registry_payload)
     validate_schema(project_root, "status_history_schema", history_payload)

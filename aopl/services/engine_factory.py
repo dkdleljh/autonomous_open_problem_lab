@@ -12,7 +12,6 @@ from aopl.apps.formalizer import DemoFormalizer, Formalizer, RealFormalizer
 from aopl.apps.paper_generator import DemoPaperGenerator, PaperGenerator, RealPaperGenerator
 from aopl.apps.proof_engine import DemoProofEngine, ProofEngine, RealProofEngine
 from aopl.core.config_store import ConfigStore
-from aopl.core.io_utils import read_yaml
 
 
 class EngineFactory:
@@ -25,7 +24,9 @@ class EngineFactory:
             self.runtime_config = self.config_store.runtime()
 
     def _engine_config(self) -> dict[str, Any]:
-        engines = self.runtime_config.get("engines", {}) if isinstance(self.runtime_config, dict) else {}
+        engines = (
+            self.runtime_config.get("engines", {}) if isinstance(self.runtime_config, dict) else {}
+        )
         return engines if isinstance(engines, dict) else {}
 
     def backend_summary(self) -> dict[str, str]:

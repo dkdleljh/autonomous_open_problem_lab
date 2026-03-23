@@ -60,7 +60,9 @@ def test_audit_log_contains_provenance_and_verification_metadata(tmp_path):
     verification_lines = verification_log_file.read_text(encoding="utf-8").strip().splitlines()
     assert verification_lines
     verification_entries = [json.loads(line) for line in verification_lines]
-    matching_entries = [item for item in verification_entries if item.get("problem_id") == problem_id]
+    matching_entries = [
+        item for item in verification_entries if item.get("problem_id") == problem_id
+    ]
     assert matching_entries
     latest_verification_entry = matching_entries[-1]
     validate_schema(project_root, "verification_log_entry_schema", latest_verification_entry)

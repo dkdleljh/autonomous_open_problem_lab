@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from aopl.core.config_store import ConfigStore
-from aopl.core.io_utils import ensure_dir, read_text, read_yaml, write_json, write_text
+from aopl.core.io_utils import ensure_dir, read_text, write_json, write_text
 from aopl.core.schema_utils import validate_schema
 from aopl.core.types import (
     FormalizationReport,

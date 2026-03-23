@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 from aopl.core.config_store import ConfigStore
-from aopl.core.io_utils import ensure_dir, read_yaml, write_json, write_text
+from aopl.core.io_utils import ensure_dir, write_json, write_text
 from aopl.core.schema_utils import validate_schema
 from aopl.core.types import FormalizationReport, NormalizedProblem, ProofDAG
 
@@ -188,12 +188,12 @@ class RealFormalizer(Formalizer):
         lines.append("")
         lines.append("namespace AutonomousOpenProblemLab")
         lines.append("")
-        lines.append(f'/- Problem: {problem.problem_id} -/')
+        lines.append(f"/- Problem: {problem.problem_id} -/")
         lines.append(f'def problemId : String := "{problem.problem_id}"')
         lines.append("")
         for node in dag.nodes:
             if node.node_type == "definition":
-                lines.append(f'/- {node.title}: {node.statement} -/')
+                lines.append(f"/- {node.title}: {node.statement} -/")
         lines.append("")
         lemma_names: list[str] = []
         for node in dag.nodes:

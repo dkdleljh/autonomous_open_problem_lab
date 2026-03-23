@@ -104,7 +104,9 @@ class Verifier:
         if dag.backend == "demo":
             warnings.append("proof backend가 demo이므로 DAG가 템플릿 기반일 수 있습니다.")
         if counterexample_report.backend == "demo":
-            warnings.append("counterexample backend가 demo이므로 반례 탐색이 샘플 규칙 기반일 수 있습니다.")
+            warnings.append(
+                "counterexample backend가 demo이므로 반례 탐색이 샘플 규칙 기반일 수 있습니다."
+            )
         return backend_summary, warnings
 
     def _check_counterexample_consistency(
@@ -120,9 +122,7 @@ class Verifier:
         if counterexample_report.found_counterexample:
             if isinstance(weak_variant, str) and weak_variant.strip():
                 if weak_variant not in node_text:
-                    critical.append(
-                        "반례 이후 약화형 권고가 proof DAG에 반영되지 않았습니다."
-                    )
+                    critical.append("반례 이후 약화형 권고가 proof DAG에 반영되지 않았습니다.")
             else:
                 critical.append("강한형 반례가 발견되었지만 약화형 권고가 없어 진행할 수 없습니다.")
 
@@ -162,7 +162,9 @@ class Verifier:
         critical.extend(self._check_banned_phrases(dag))
         critical.extend(self._check_dag_integrity(dag))
         warnings.extend(self._check_reference_conflict(problem))
-        backend_summary, provenance_warnings = self._check_provenance_risk(dag, counterexample_report)
+        backend_summary, provenance_warnings = self._check_provenance_risk(
+            dag, counterexample_report
+        )
         warnings.extend(provenance_warnings)
         consistency_critical, consistency_warnings = self._check_counterexample_consistency(
             dag, counterexample_report

@@ -205,7 +205,9 @@ class RealProofEngine(ProofEngine):
         hints = config.get("formalization_hints", []) if isinstance(config, dict) else []
         preferred = config.get("preferred_problem_types", []) if isinstance(config, dict) else []
         hint_text = ", ".join(str(item) for item in hints[:2]) if hints else "기본 라이브러리 힌트"
-        preferred_text = ", ".join(str(item) for item in preferred[:2]) if preferred else problem.domain
+        preferred_text = (
+            ", ".join(str(item) for item in preferred[:2]) if preferred else problem.domain
+        )
         weak_form = problem.weak_forms[0] if problem.weak_forms else problem.target
         weak_variant, explored_bound = self._counterexample_context(counterexample_report)
         reduction_statement = (

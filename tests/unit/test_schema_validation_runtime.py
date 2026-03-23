@@ -146,7 +146,9 @@ def test_submission_builder_emits_schema_valid_manifest(tmp_path):
     pdf_path = project_root / paper_manifest.pdf_file
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
     pdf_path.write_bytes(b"%PDF-1.4\n%%EOF\n")
-    manifest_json = project_root / "papers" / "builds" / "prob_schema_submission_paper_manifest.json"
+    manifest_json = (
+        project_root / "papers" / "builds" / "prob_schema_submission_paper_manifest.json"
+    )
     manifest_json.parent.mkdir(parents=True, exist_ok=True)
     manifest_json.write_text("{}", encoding="utf-8")
 

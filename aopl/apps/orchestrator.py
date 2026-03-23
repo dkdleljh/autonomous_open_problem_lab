@@ -12,7 +12,7 @@ from aopl.apps.submission_builder import SubmissionBuilder
 from aopl.apps.verifier import Verifier
 from aopl.core.config_store import ConfigStore
 from aopl.core.gates import GatePolicy
-from aopl.core.io_utils import append_jsonl, ensure_dir, now_utc_iso, read_yaml, write_json
+from aopl.core.io_utils import append_jsonl, ensure_dir, now_utc_iso, write_json
 from aopl.core.schema_utils import validate_schema
 from aopl.core.state_machine import StageMachine
 from aopl.core.types import PipelineStage, StageEvent

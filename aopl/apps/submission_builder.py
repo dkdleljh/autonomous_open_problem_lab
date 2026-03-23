@@ -6,7 +6,12 @@ from pathlib import Path
 
 from aopl.core.io_utils import ensure_dir, now_utc_iso, sha256_file, write_json, write_text
 from aopl.core.schema_utils import validate_schema
-from aopl.core.types import FormalizationReport, PaperManifest, SubmissionManifest, VerificationReport
+from aopl.core.types import (
+    FormalizationReport,
+    PaperManifest,
+    SubmissionManifest,
+    VerificationReport,
+)
 
 
 class SubmissionBuilder:
@@ -58,7 +63,9 @@ class SubmissionBuilder:
         verification_summary = {
             "passed": verification.passed if verification is not None else None,
             "gate_reason": verification.gate_reason if verification is not None else "unknown",
-            "critical_issue_count": len(verification.critical_issues) if verification is not None else 0,
+            "critical_issue_count": len(verification.critical_issues)
+            if verification is not None
+            else 0,
             "warning_count": len(verification.warnings) if verification is not None else 0,
             "critical_issue_preview": (
                 verification.critical_issues[:2] if verification is not None else []

@@ -42,7 +42,9 @@ def test_real_formalizer_generates_structured_skeleton(tmp_path):
     )
 
     normalized = Normalizer(project_root).normalize(record)
-    proof_engine = EngineFactory(project_root, {"engines": {"proof_backend": "real"}}).proof_engine()
+    proof_engine = EngineFactory(
+        project_root, {"engines": {"proof_backend": "real"}}
+    ).proof_engine()
     dag = proof_engine.build(normalized)
     formalizer = EngineFactory(project_root).formalizer()
     report = formalizer.generate(normalized, dag)
@@ -78,7 +80,9 @@ def test_real_formalizer_uses_domain_imports(tmp_path):
     )
 
     normalized = Normalizer(project_root).normalize(record)
-    proof_engine = EngineFactory(project_root, {"engines": {"proof_backend": "real"}}).proof_engine()
+    proof_engine = EngineFactory(
+        project_root, {"engines": {"proof_backend": "real"}}
+    ).proof_engine()
     dag = proof_engine.build(normalized)
     formalizer = EngineFactory(project_root).formalizer()
     report = formalizer.generate(normalized, dag)
@@ -118,7 +122,9 @@ def test_real_formalizer_respects_disabled_build_setting(tmp_path):
     )
 
     normalized = Normalizer(project_root).normalize(record)
-    proof_engine = EngineFactory(project_root, {"engines": {"proof_backend": "real"}}).proof_engine()
+    proof_engine = EngineFactory(
+        project_root, {"engines": {"proof_backend": "real"}}
+    ).proof_engine()
     dag = proof_engine.build(normalized)
     formalizer = EngineFactory(project_root).formalizer()
     report = formalizer.generate(normalized, dag)

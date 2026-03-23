@@ -262,7 +262,9 @@ def _command_doctor(args: argparse.Namespace) -> None:
     quality_policy = ConfigStore(root).quality_policy().get("doctor", {})
     profiles = quality_policy.get("profiles", {}) if isinstance(quality_policy, dict) else {}
     configured_default_profile = (
-        quality_policy.get("default_profile", "local") if isinstance(quality_policy, dict) else "local"
+        quality_policy.get("default_profile", "local")
+        if isinstance(quality_policy, dict)
+        else "local"
     )
     active_profile = args.profile or configured_default_profile
     profile_policy = profiles.get(active_profile, {})
@@ -385,7 +387,10 @@ def _command_doctor(args: argparse.Namespace) -> None:
         weight=2,
     )
 
-    workflow_files = [root / ".github" / "workflows" / "ci.yml", root / ".github" / "workflows" / "release.yml"]
+    workflow_files = [
+        root / ".github" / "workflows" / "ci.yml",
+        root / ".github" / "workflows" / "release.yml",
+    ]
     missing_workflows = [path.name for path in workflow_files if not path.exists()]
     add_check(
         "GitHub 워크플로우",
@@ -414,7 +419,9 @@ def _command_doctor(args: argparse.Namespace) -> None:
     blocking_checks = [
         {
             "name": name,
-            "detail": check_lookup[name]["detail"] if name in check_lookup else "정의되지 않은 체크",
+            "detail": check_lookup[name]["detail"]
+            if name in check_lookup
+            else "정의되지 않은 체크",
         }
         for name in required_check_names
         if name not in check_lookup or not check_lookup[name]["passed"]

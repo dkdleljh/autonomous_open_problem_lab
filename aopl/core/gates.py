@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any
 
 from aopl.core.config_store import ConfigStore
-from aopl.core.io_utils import read_yaml
 
 
 def _is_dag(nodes: list[str], edges: list[tuple[str, str]]) -> bool:

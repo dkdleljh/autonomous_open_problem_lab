@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from aopl.core.config_store import ConfigStore
-from aopl.core.io_utils import ensure_dir, read_yaml, write_json
+from aopl.core.io_utils import ensure_dir, write_json
 from aopl.core.schema_utils import validate_schema
 from aopl.core.types import NormalizedProblem, ScoreCard
 

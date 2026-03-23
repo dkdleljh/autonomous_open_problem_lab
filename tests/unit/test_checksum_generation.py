@@ -79,9 +79,7 @@ def test_checksum_file_created(tmp_path):
         artifact_kind="skeleton_only",
     )
 
-    submission = SubmissionBuilder(project_root).build(
-        paper_manifest, verification, formal_report
-    )
+    submission = SubmissionBuilder(project_root).build(paper_manifest, verification, formal_report)
     checksum_path = project_root / submission.checksum_file
 
     assert checksum_path.exists()

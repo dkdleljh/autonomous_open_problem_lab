@@ -52,7 +52,9 @@ class ConfigStore:
         return data
 
     def obligation_thresholds(self) -> dict[str, Any]:
-        data = self._load_dict(self.root / "configs" / "formalization" / "obligation_thresholds.yaml")
+        data = self._load_dict(
+            self.root / "configs" / "formalization" / "obligation_thresholds.yaml"
+        )
         max_unresolved = data.get("max_unresolved_obligations", 12)
         max_release = data.get("max_unresolved_for_release", 8)
         if not isinstance(max_unresolved, int) or max_unresolved < 0:
@@ -96,7 +98,9 @@ class ConfigStore:
             raise ValueError("quality_policy.doctor.profiles 는 비어 있지 않은 객체여야 합니다.")
         for profile_name, profile in profiles.items():
             if not isinstance(profile, dict):
-                raise ValueError(f"quality_policy.doctor.profiles.{profile_name} 는 객체여야 합니다.")
+                raise ValueError(
+                    f"quality_policy.doctor.profiles.{profile_name} 는 객체여야 합니다."
+                )
             min_score = profile.get("min_score", 100)
             if not isinstance(min_score, (int, float)) or not 0 <= float(min_score) <= 100:
                 raise ValueError(
@@ -110,7 +114,9 @@ class ConfigStore:
                     f"quality_policy.doctor.profiles.{profile_name}.required_checks 는 문자열 배열이어야 합니다."
                 )
         if default_profile not in profiles:
-            raise ValueError("quality_policy.doctor.default_profile 이 profiles에 정의되어야 합니다.")
+            raise ValueError(
+                "quality_policy.doctor.default_profile 이 profiles에 정의되어야 합니다."
+            )
         return data
 
     def _validate_runtime(self, data: dict[str, Any]) -> None:
@@ -129,7 +135,9 @@ class ConfigStore:
         if isinstance(gates, dict):
             reliability = gates.get("harvest_min_reliability", 0.75)
             if not isinstance(reliability, (int, float)) or not 0 <= float(reliability) <= 1:
-                raise ValueError("runtime.gates.harvest_min_reliability는 0 이상 1 이하여야 합니다.")
+                raise ValueError(
+                    "runtime.gates.harvest_min_reliability는 0 이상 1 이하여야 합니다."
+                )
         release = data.get("release", {})
         if isinstance(release, dict):
             for key in [

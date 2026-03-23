@@ -7,9 +7,15 @@ from pathlib import Path
 
 import pytest
 
-from aopl.apps.orchestrator import Orchestrator
 import aopl.cli.main as cli_main
-from aopl.cli.main import _command_doctor, _command_submission, _command_verify, _load_normalized, build_parser
+from aopl.apps.orchestrator import Orchestrator
+from aopl.cli.main import (
+    _command_doctor,
+    _command_submission,
+    _command_verify,
+    _load_normalized,
+    build_parser,
+)
 from aopl.core.io_utils import read_json, read_yaml, write_json, write_yaml
 
 
@@ -152,7 +158,9 @@ def test_cli_doctor_strict_exits_when_policy_unmet(tmp_path, capsys):
     project_root = prepare_project_root(tmp_path)
 
     with pytest.raises(SystemExit, match="1"):
-        _command_doctor(Namespace(root=str(project_root), profile="local", strict=True, min_score=None))
+        _command_doctor(
+            Namespace(root=str(project_root), profile="local", strict=True, min_score=None)
+        )
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["active_profile"] == "local"

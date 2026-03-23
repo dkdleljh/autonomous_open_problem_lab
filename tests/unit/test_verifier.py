@@ -135,7 +135,9 @@ def test_verifier_warns_when_search_bound_is_absent_from_proof_dag(tmp_path):
         target_node="n2",
         nodes=[
             ProofNode("n0", "definition", "정의", "기본 정의", [], "ready"),
-            ProofNode("n1", "lemma", "약화형 환원 경로", "n을 홀수로 제한한다.", ["n0"], "candidate"),
+            ProofNode(
+                "n1", "lemma", "약화형 환원 경로", "n을 홀수로 제한한다.", ["n0"], "candidate"
+            ),
             ProofNode("n2", "theorem", "주정리", "목표를 보인다.", ["n1"], "draft"),
         ],
         edges=[{"from": "n0", "to": "n1"}, {"from": "n1", "to": "n2"}],

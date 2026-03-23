@@ -266,7 +266,10 @@ def test_real_paper_generator_reflects_verifier_findings_in_text_and_appendix(tm
     assert "verifier_critical=반례 이후 약화형 권고가 proof DAG에 반영되지 않았습니다." in en_text
     assert "검증 중대 이슈 수: 1" in appendix_text
     assert "검증 경고 수: 1" in appendix_text
-    assert "검증 중대 이슈 요약: 반례 이후 약화형 권고가 proof DAG에 반영되지 않았습니다." in appendix_text
+    assert (
+        "검증 중대 이슈 요약: 반례 이후 약화형 권고가 proof DAG에 반영되지 않았습니다."
+        in appendix_text
+    )
 
 
 def test_paper_qa_rejects_forbidden_phrase_in_korean(tmp_path):
