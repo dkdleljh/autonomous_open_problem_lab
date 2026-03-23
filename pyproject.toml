@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 authors = [
   { name = "Autonomous Open Problem Lab Team" }
 ]
-license = { text = "MIT" }
+license = "MIT"
 dependencies = [
   "PyYAML>=6.0",
   "jsonschema>=4.22.0",
