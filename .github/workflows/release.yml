@@ -22,12 +22,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 코드 체크아웃
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: 파이썬 설정
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -70,7 +70,7 @@ jobs:
           python scripts/release/generate_release_notes.py --tag "$TAG_NAME" --output data/paper_assets/releases/release_notes_generated.md
 
       - name: 릴리즈 생성
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.6.1
         with:
           body_path: data/paper_assets/releases/release_notes_generated.md
           files: |
