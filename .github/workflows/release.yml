@@ -69,13 +69,18 @@ jobs:
           if [ -z "$TAG_NAME" ]; then TAG_NAME=${{ inputs.tag }}; fi
           python scripts/release/generate_release_notes.py --tag "$TAG_NAME" --output data/paper_assets/releases/release_notes_generated.md
 
-      - name: 릴리즈 생성
-        uses: softprops/action-gh-release@v2.6.1
-        with:
-          body_path: data/paper_assets/releases/release_notes_generated.md
-          files: |
-            data/paper_assets/releases/*.zip
-            data/paper_assets/releases/*.tar.gz
-            data/paper_assets/releases/*checksums.txt
-            papers/builds/*.pdf
-            papers/builds/*paper_manifest.json
+      - name: 릴리즈 자산 업로드
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME=${GITHUB_REF_NAME}
+          if [ -z "$TAG_NAME" ]; then TAG_NAME=${{ inputs.tag }}; fi
+          gh release edit "$TAG_NAME" --repo "${{ github.repository }}" --notes-file data/paper_assets/releases/release_notes_generated.md
+          gh release upload "$TAG_NAME" \
+            data/paper_assets/releases/*.zip \
+            data/paper_assets/releases/*.tar.gz \
+            data/paper_assets/releases/*checksums.txt \
+            papers/builds/*.pdf \
+            papers/builds/*paper_manifest.json \
+            --repo "${{ github.repository }}" \
+            --clobber
