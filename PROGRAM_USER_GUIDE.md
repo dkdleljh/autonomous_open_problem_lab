@@ -1,18 +1,26 @@
 # 프로그램 사용설명서
 
-## 1. 이 문서의 대상
+## 1. 목적
 
-이 문서는 처음 사용하는 개발자와 연구자를 대상으로 한다. 파이썬 환경 구성부터 전체 자동 파이프라인 실행, 결과 해석, 자동 릴리즈까지 단계별로 설명한다.
+이 문서는 처음 프로젝트를 실행하는 사람, 파이프라인 결과를 해석해야 하는 사람, 실제로 GitHub 릴리즈까지 운영해야 하는 사람을 위한 실무용 안내서다. "어떻게 설치하는가", "어떤 순서로 실행하는가", "결과를 어디서 읽는가", "문제가 생기면 무엇을 봐야 하는가"를 한 문서에서 설명한다.
 
-## 2. 설치
+## 2. 권장 독자
 
-### 2.1 준비
+- 처음 환경을 구성하는 개발자
+- 파이프라인 산출물을 읽는 연구자
+- CI, Release 운영을 담당하는 관리자
+- doctor 기반 100점 운영 준비도를 유지해야 하는 사람
+
+## 3. 설치
+
+### 3.1 기본 요구 사항
 
 - Python 3.11 이상
 - Git
-- 선택 사항: Lean 4, Rust, GitHub CLI
+- GitHub CLI
+- 선택 사항: Lean 4, Lake, LaTeX
 
-### 2.2 의존성 설치
+### 3.2 Python 환경 구성
 
 ```bash
 python3 -m venv .venv
@@ -20,155 +28,245 @@ python3 -m venv .venv
 .venv/bin/pip install -e .[dev]
 ```
 
-## 3. 첫 실행
+### 3.3 도구 설치 점검
+
+```bash
+.venv/bin/aopl doctor --root . --profile local
+```
+
+## 4. 가장 빠른 실행 경로
 
 ```bash
 .venv/bin/aopl run-all --root . --limit 1
 ```
 
-실행이 끝나면 `data/audit_logs/last_run_summary.json`을 열어 최종 단계와 차단 사유를 확인한다.
+실행 후 확인해야 할 대표 파일은 아래와 같다.
 
-## 4. 설정 방법
+- `data/audit_logs/last_run_summary.json`
+- `data/audit_logs/pipeline_audit.jsonl`
+- `data/theorem_store/*_verification.json`
+- `formal/proof_obligations/*_formalization_report.json`
+- `papers/builds/*_paper_manifest.json`
 
-설정은 `configs/` 아래 YAML 파일로 관리한다.
+## 5. 단계별 명령
 
-- 런타임: `configs/global/runtime.yaml`
-- 큐 정책: `configs/global/queue.yaml`
-- 점수 가중치: `configs/scoring/default.yaml`
-- 형식화 임계값: `configs/formalization/obligation_thresholds.yaml`
-- 논문 규칙: `configs/paper/*.yaml`
-
-설정 변경 후에는 아래 명령으로 즉시 검증한다.
+### 5.1 수집
 
 ```bash
+.venv/bin/aopl harvest --root .
+```
+
+### 5.2 정규화
+
+```bash
+.venv/bin/aopl normalize --root .
+```
+
+### 5.3 점수 계산
+
+```bash
+.venv/bin/aopl score --root .
+```
+
+### 5.4 반례 탐색
+
+```bash
+.venv/bin/aopl counterexample --root .
+```
+
+### 5.5 proof DAG 생성
+
+```bash
+.venv/bin/aopl proof --root .
+```
+
+### 5.6 검증
+
+```bash
+.venv/bin/aopl verify --root .
+```
+
+### 5.7 형식화
+
+```bash
+.venv/bin/aopl formalize --root .
+```
+
+### 5.8 논문 생성
+
+```bash
+.venv/bin/aopl paper --root .
+```
+
+### 5.9 제출 패키지 생성
+
+```bash
+.venv/bin/aopl submission --root .
+```
+
+## 6. doctor 사용법
+
+### 6.1 기본 점검
+
+```bash
+.venv/bin/aopl doctor --root .
+```
+
+### 6.2 strict 점검
+
+```bash
+.venv/bin/aopl doctor --root . --profile local --strict
+```
+
+### 6.3 지원 프로필
+
+- `local`: 로컬 개발 및 무인 실행 준비도
+- `ci`: GitHub CI 러너 준비도
+- `github_release`: GitHub Release 러너 준비도
+
+### 6.4 strict 의미
+
+`--strict`는 단순 보고용이 아니다. 점수가 모자라거나 필수 항목이 하나라도 실패하면 종료 코드 1로 끝난다. 즉, 자동화 스크립트가 즉시 실패한다.
+
+### 6.5 doctor가 점검하는 항목
+
+- 프로젝트 루트 존재
+- Git 저장소 여부
+- origin 원격
+- 현재 브랜치 또는 tag 상태
+- 워킹트리 청결
+- pytest 실행 가능 여부
+- Lean, Lake, LaTeX, GitHub CLI
+- GitHub 인증 및 저장소 식별 가능 여부
+- 핵심 한글 문서 존재 여부
+- GitHub Actions 워크플로우 존재 여부
+
+### 6.6 GitHub 인증 fallback
+
+`github_release` 프로필에서는 다음 둘 중 하나만 충족해도 된다.
+
+- `GITHUB_TOKEN`, `GITHUB_REPOSITORY` 환경변수
+- `gh auth` 로그인 세션 + `origin` 원격 URL
+
+## 7. 결과 해석
+
+### 7.1 registry
+
+- 위치: `data/registry/problem_registry.json`
+- 의미: 현재 알고 있는 문제 목록과 현재 단계
+
+### 7.2 normalized
+
+- 위치: `data/normalized/*_normalized.json`
+- 의미: 객체, 가정, 목표, 동치형, 약화형, 강화형이 구조화된 결과
+
+### 7.3 score
+
+- 위치: `data/normalized/*_score.json`
+- 의미: 선별 점수와 세부 지표
+
+### 7.4 counterexample
+
+- 위치: `data/experiments/*_counterexample.json`
+- 의미: 탐색 범위, seed, 발견 여부, 약화형 권고
+
+### 7.5 proof DAG
+
+- 위치: `data/proof_dag/*_proof_dag.json`
+- 의미: 증명 개요 구조와 의존 관계
+
+### 7.6 verification
+
+- 위치: `data/theorem_store/*_verification.json`
+- 의미: critical issue, warning, gate reason
+
+### 7.7 formalization report
+
+- 위치: `formal/proof_obligations/*_formalization_report.json`
+- 의미: Lean 파일, obligation 수, unresolved 목록, build 성공 여부
+
+### 7.8 paper manifest
+
+- 위치: `papers/builds/*_paper_manifest.json`
+- 의미: ko/en tex, appendix, pdf, 번호 동기화, pdf build 여부
+
+### 7.9 submission manifest
+
+- 위치: 릴리즈 패키지 내 `submission_manifest.json`
+- 의미: 포함 파일, 체크섬, verification summary, artifact summary
+
+## 8. 운영 절차
+
+### 8.1 로컬 개발 루프
+
+```bash
+.venv/bin/aopl doctor --root . --profile local --strict
+.venv/bin/ruff check aopl tests scripts
 .venv/bin/pytest -q
 .venv/bin/aopl run-all --root . --limit 1
 ```
 
-## 5. 단계별 실행
+### 8.2 자동 업데이트
 
 ```bash
-.venv/bin/aopl harvest --root .
-.venv/bin/aopl normalize --root .
-.venv/bin/aopl score --root .
-.venv/bin/aopl counterexample --root .
-.venv/bin/aopl proof --root .
-.venv/bin/aopl verify --root .
-.venv/bin/aopl formalize --root .
-.venv/bin/aopl paper --root .
-.venv/bin/aopl submission --root .
+python3 scripts/release/auto_update.py --python .venv/bin/python --push
 ```
 
-## 6. 로그 확인
+이 스크립트는 doctor, 테스트, 샘플 실행, 커밋, 선택적 push를 묶는다.
 
-- 전체 단계 감사 로그: `data/audit_logs/pipeline_audit.jsonl`
-- 검증 로그: `data/audit_logs/verification_log.jsonl`
-- 최종 요약: `data/audit_logs/last_run_summary.json`
-
-## 6.1 운영 준비도 점검
+### 8.3 로컬 릴리즈
 
 ```bash
-.venv/bin/aopl doctor --root .
-.venv/bin/aopl doctor --root . --profile local --strict
+python3 scripts/release/create_release.py --mode local --bump patch --python .venv/bin/python
 ```
 
-이 명령은 다음을 점검한다.
-
-- Git 저장소와 origin 원격 존재 여부
-- 현재 브랜치와 워킹트리 상태
-- pytest, Lean, Lake, LaTeX, GitHub CLI 설치 여부
-- `GITHUB_TOKEN`, `GITHUB_REPOSITORY` 환경변수
-- 핵심 한글 문서 존재 여부
-- GitHub CI/Release 워크플로우 존재 여부
-
-주의:
-
-- 이 점수는 운영 준비도 점수다.
-- "모든 수학 난제를 해결할 수 있는가"를 점수화하는 명령은 아니다.
-- `--strict`를 붙이면 활성 프로필의 필수 점검 항목을 모두 만족해야 종료 코드 0이 나온다.
-- 프로필은 `local`, `ci`, `github_release`를 지원한다.
-- `github_release` 프로필에서는 `GITHUB_TOKEN`, `GITHUB_REPOSITORY`가 없더라도 `gh auth token`과 `origin` 원격 URL이 있으면 자동으로 대체 판단한다.
-
-## 7. 결과 해석 방법
-
-### 7.1 점수 해석
-
-`data/normalized/*_score.json`에서 다섯 지표와 최종 점수를 확인한다.
-
-### 7.2 반례 탐색 해석
-
-`data/experiments/*_counterexample.json`에서 다음 항목을 확인한다.
-
-- 반례 발견 여부
-- 탐색 범위
-- seed
-- 실행 시간
-- 약화형 권고
-
-### 7.3 검증 해석
-
-`data/theorem_store/*_verification.json`에서 `critical_issues`가 비어 있어야 검증 통과다.
-
-## 8. 논문 출력 확인
-
-- 한국어 텍스트: `papers/ko/*.tex`
-- 영어 텍스트: `papers/en/*.tex`
-- 참고문헌: `papers/shared/*.bib`
-- 부록: `papers/shared/*_appendix.md`
-- PDF: `papers/builds/*.pdf`
-
-논문 번호 동기화는 `aopl/apps/paper_generator.py`의 QA 단계에서 자동 검사한다.
-
-## 9. 자동 릴리즈 동작 방식
-
-### 9.1 로컬 릴리즈
+### 8.4 GitHub 릴리즈
 
 ```bash
-python3 scripts/release/create_release.py --mode local --bump patch
+python3 scripts/release/create_release.py --mode github --bump patch --python .venv/bin/python
 ```
 
-기능:
+이 명령은 내부적으로 다음을 수행한다.
 
-- `doctor --profile local --strict`로 운영 준비도 100점 확인
-- 테스트 실행
-- 파이프라인 샘플 실행
-- 버전 계산
-- 태그 생성
-- 릴리즈 노트 생성
+1. `doctor --profile github_release --strict`
+2. `pytest -q`
+3. `aopl run-all --limit 1`
+4. 버전 계산
+5. 태그 생성
+6. push
+7. GitHub Release 생성
 
-### 9.2 GitHub 릴리즈
+## 9. 문제 해결
 
-환경변수 설정:
-
-- `GITHUB_TOKEN`
-- `GITHUB_REPOSITORY`
-
-명령:
-
-```bash
-python3 scripts/release/create_release.py --mode github --bump patch
-```
-
-이 경로는 내부적으로 `doctor --profile github_release --strict`를 먼저 실행한다.
-
-## 10. 자주 발생하는 문제와 해결법
-
-### 문제 1: `aopl` 명령을 찾을 수 없음
+### 9.1 `aopl` 명령을 찾을 수 없음
 
 - 원인: editable 설치 누락
 - 해결: `.venv/bin/pip install -e .[dev]`
 
-### 문제 2: Lean 빌드 실패
+### 9.2 doctor strict 실패
 
-- 원인: Lean 미설치 또는 PATH 미설정
-- 해결: Lean 설치 후 재실행. 미설치 상태에서도 skeleton 생성은 진행되며 보고서에 실패가 기록된다.
+- 원인: 워킹트리 dirty, 도구 미설치, 원격/인증 누락
+- 해결: 출력 JSON의 `blocking_checks`를 먼저 본다
 
-### 문제 3: Release Gate 실패
+### 9.3 Lean 또는 Lake 실패
 
-- 원인: 체크섬 또는 매니페스트 누락
-- 해결: `aopl submission --root .` 재실행 후 파일 존재 확인
+- 원인: PATH 미설정 또는 미설치
+- 해결: Lean 설치 후 `doctor` 재실행
 
-### 문제 4: GitHub 릴리즈 실패
+### 9.4 PDF 생성 실패
 
-- 원인: 인증 환경변수 누락
-- 해결: 토큰과 저장소 환경변수 설정 후 다시 실행
+- 원인: LaTeX 미설치 또는 템플릿 오류
+- 해결: `papers/builds/*_latex.log`와 `paper_manifest.json`을 같이 확인
+
+### 9.5 GitHub Release 실패
+
+- 원인: 인증 없음, 원격 없음, doctor strict 실패
+- 해결: `gh auth status`, `git remote -v`, `aopl doctor --profile github_release --strict`
+
+## 10. 권장 읽기 순서
+
+1. [README.md](./README.md)
+2. [PROGRAM_USER_GUIDE.md](./PROGRAM_USER_GUIDE.md)
+3. [PROGRAM_DETAILED_DESIGN.md](./PROGRAM_DETAILED_DESIGN.md)
+4. [docs/README.md](./docs/README.md)
+5. [PROGRAM_REALITY_CHECK_KO.md](./PROGRAM_REALITY_CHECK_KO.md)

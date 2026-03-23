@@ -1,39 +1,34 @@
 # Autonomous Open Problem Lab
 
-완전 무인 방식으로 수학 난제 후보를 수집하고, 정규화, 우선순위화, 반례 탐색, 증명 탐색, 검증, 형식화 시도, 한영 논문 초안 생성, 제출 패키지 생성을 자동 수행하는 통합 시스템이다.
+Autonomous Open Problem Lab은 수학 난제 후보를 수집하고, 정규화하고, 우선순위를 계산하고, 반례를 점검하고, proof DAG를 만들고, 검증하고, 형식화와 논문 초안, 제출 패키지, 릴리즈 아티팩트까지 자동으로 이어주는 연구 파이프라인이다.
 
-## 왜 이 시스템이 필요한가
+이 프로젝트의 강점은 "모든 난제를 해결한다"가 아니라, 연구 파이프라인을 무인 운영 가능한 형태로 구조화하고, 모든 중간 산출물과 게이트 판단을 추적 가능하게 남기며, 운영 준비도가 부족하면 실제로 자동 차단한다는 점이다.
 
-수학 난제 연구 자동화는 단순 계산 자동화와 다르다. 문제 선정 기준, 반례와 증명의 분리, 논리 공백 검출, 형식화 가능성 점검, 논문 번호 동기화, 재현성 아티팩트 관리가 동시에 필요하다. 이 프로젝트는 연구 파이프라인 전체를 하나의 상태 머신으로 묶어, 사람이 매단계 승인하지 않아도 품질 게이트를 통해 자동 차단과 자동 이관을 수행한다.
+## 1. 현재 프로젝트가 하는 일
 
-## 무엇을 자동화하는가
-
-- 난제 후보 자동 수집과 중복 제거
-- canonical 문제 레지스트리 구축
-- 정규화 JSON 생성과 동치형, 약화형, 강화형 관리
-- 점수 기반 우선순위화
-- 강한형 반례 탐색과 약화형 자동 전환
-- proof DAG 구축과 실패 경로 기록
-- 검증 게이트 기반 자동 차단
-- Lean 4 skeleton 생성과 obligation 보고
-- 한국어, 영어 논문 초안 동시 생성
+- 난제 후보 수집과 등록
+- 문제 레지스트리 구축과 상태 이력 관리
+- 정규화 산출물 생성
+- 점수 계산과 선별
+- 반례 탐색
+- proof DAG 생성
+- 검증 리포트 생성
+- Lean skeleton 및 형식화 리포트 생성
+- 한국어, 영어 논문 초안 생성
 - 제출 패키지, 체크섬, 릴리즈 노트 생성
+- GitHub CI, Release, doctor 기반 운영 준비도 점검
 
-## 무엇을 보장하지 않는가
+## 2. 하지 않는 일
 
-- 실제 미해결 난제를 반드시 해결한다고 보장하지 않는다.
-- 계산 실험 결과만으로 일반 명제를 해결했다고 주장하지 않는다.
-- 형식화가 완료되지 않은 구간을 숨기지 않는다.
+- 모든 수학 난제를 자동으로 해결한다고 보장하지 않는다.
+- 템플릿 산출물을 실제 수학적 성과와 동일시하지 않는다.
+- 형식화 미완료, 논리 공백, 약화형 전환, placeholder PDF 여부를 숨기지 않는다.
 
-## 바탕화면 저장 정책
+이 한계는 [PROGRAM_REALITY_CHECK_KO.md](./PROGRAM_REALITY_CHECK_KO.md)에 더 명확히 정리되어 있다.
 
-프로젝트 루트는 `autonomous_open_problem_lab`로 통일한다. 운영체제별 바탕화면 감지는 `aopl/core/paths.py`에서 처리하며, 기본 규칙은 다음과 같다.
+## 3. 빠른 시작
 
-- Windows: `%USERPROFILE%/Desktop` 또는 `OneDrive/Desktop`
-- macOS, Linux: `~/Desktop`
-- 바탕화면 미존재 시 홈 디렉터리로 폴백
-
-## 설치 방법
+### 3.1 설치
 
 ```bash
 python3 -m venv .venv
@@ -41,13 +36,21 @@ python3 -m venv .venv
 .venv/bin/pip install -e .[dev]
 ```
 
-## 빠른 시작
+### 3.2 전체 파이프라인 실행
 
 ```bash
 .venv/bin/aopl run-all --root . --limit 1
 ```
 
-단계별 실행 예시는 다음과 같다.
+### 3.3 운영 준비도 점검
+
+```bash
+.venv/bin/aopl doctor --root . --profile local --strict
+```
+
+`doctor --strict`는 활성 프로필에서 요구하는 핵심 항목이 전부 충족되지 않으면 종료 코드 1로 실패한다. 이 경로는 로컬 자동 업데이트, GitHub CI, GitHub Release 워크플로우에서 실제로 사용된다.
+
+## 4. CLI 명령 요약
 
 ```bash
 .venv/bin/aopl harvest --root .
@@ -59,108 +62,124 @@ python3 -m venv .venv
 .venv/bin/aopl formalize --root .
 .venv/bin/aopl paper --root .
 .venv/bin/aopl submission --root .
-.venv/bin/aopl doctor --root .
 .venv/bin/aopl doctor --root . --profile local --strict
+.venv/bin/aopl run-all --root . --limit 1
 ```
 
-`doctor`는 현재 환경에서 무인 운영, 릴리즈, 문서, 외부 도구 준비 상태를 점검한다.
-`doctor --strict`는 활성 프로필의 필수 항목이 100점을 만들지 못하면 종료 코드 1로 실패한다. GitHub 관련 항목은 환경변수가 없더라도 `gh auth` 로그인 세션과 `origin` 원격에서 자동 추론할 수 있다.
+각 명령의 상세 사용법과 결과 해석은 [PROGRAM_USER_GUIDE.md](./PROGRAM_USER_GUIDE.md)를 기준 문서로 본다.
 
-## 주요 모듈 설명
+## 5. 주요 아키텍처
 
-- `aopl/apps/harvester.py`: 수집, 스냅샷, 중복 제거
-- `aopl/apps/registry.py`: canonical record, alias, 상태 이력
-- `aopl/apps/normalizer.py`: 객체, 가정, 목표 분리와 정규화
-- `aopl/apps/scorer.py`: 점수 계산과 선택
-- `aopl/apps/counterexample_engine.py`: 강한형 반례 탐색
-- `aopl/apps/proof_engine.py`: proof DAG 생성
-- `aopl/apps/verifier.py`: 논리 공백, 문헌 충돌, 금지 표현 검사
-- `aopl/apps/formalizer.py`: Lean skeleton 생성과 보고서
-- `aopl/apps/paper_generator.py`: 한영 논문 동시 생성
-- `aopl/apps/submission_builder.py`: 제출 패키지와 체크섬 생성
-- `aopl/apps/orchestrator.py`: 전체 상태 머신과 게이트 제어
-
-## 완전 무인 자동화 흐름
+### 5.1 파이프라인 단계
 
 `REGISTERED → HARVESTED → NORMALIZED → SCORED → SELECTED → COUNTEREXAMPLE_CHECKED → LEMMA_GRAPH_BUILT → DRAFT_PROOF_CREATED → INTERNAL_VERIFICATION_PASSED → FORMALIZATION_ATTEMPTED → PAPER_DRAFT_GENERATED → PAPER_QA_PASSED → SUBMISSION_PACKAGE_READY → RELEASED`
 
-각 단계는 게이트 통과 여부로만 전이하며 수동 승인 단계를 두지 않는다.
+모든 단계는 품질 게이트를 통과해야 다음 단계로 전이된다. 실패하면 `BLOCKED` 상태와 함께 감사 로그, 상태 이력, 요약 JSON에 사유가 남는다.
 
-## 품질 게이트
+### 5.2 핵심 모듈
 
-- Harvest Gate: 출처 신뢰도 임계값 검사
-- Normalize Gate: 정의, 가정, 목표 분리 검사
-- Counterexample Gate: 강한형 붕괴 시 약화형 권고 검사
-- Proof Integrity Gate: DAG 순환, 단절 검사
-- Verification Gate: 중대 논리 이슈, 금지 표현 검사
-- Formalization Gate: 미해결 obligation 임계값 검사
-- Paper QA Gate: 번호 동기화, 참고문헌, 부록 검사
-- Release Gate: 패키지, 체크섬, 노트 존재 검사
+- `aopl/apps/harvester.py`: 수집 및 provenance 부여
+- `aopl/apps/registry.py`: registry merge, 상태 이력, schema 검증
+- `aopl/apps/normalizer.py`: normalized problem 생성
+- `aopl/apps/scorer.py`: score card 계산
+- `aopl/apps/counterexample_engine.py`: demo/real 반례 백엔드
+- `aopl/apps/proof_engine.py`: demo/real proof DAG 백엔드
+- `aopl/apps/verifier.py`: 검증, consistency check, verification log
+- `aopl/apps/formalizer.py`: Lean skeleton, build report
+- `aopl/apps/paper_generator.py`: bilingual paper, appendix, PDF build
+- `aopl/apps/submission_builder.py`: submission manifest, checksum, bundle
+- `aopl/apps/orchestrator.py`: 전체 상태 머신과 감사 로그
 
-## 출력물 예시
+### 5.3 데이터 계약
 
-- `data/audit_logs/last_run_summary.json`
-- `data/proof_dag/*_proof_dag.json`
-- `formal/generated_skeletons/*.lean`
-- `papers/ko/*.tex`
-- `papers/en/*.tex`
-- `papers/builds/*.pdf`
-- `data/paper_assets/releases/*.zip`
+주요 산출물은 JSON Schema로 검증된다.
 
-## 논문 생성 구조
+- problem registry
+- status history
+- normalized problem
+- score card
+- counterexample report
+- proof DAG
+- verification report
+- formalization report
+- paper manifest
+- submission manifest
+- stage event
+- run summary
 
-공통 의미 그래프를 `papers/shared/*_semantic_graph.json`으로 먼저 생성하고, 그 그래프를 입력으로 한국어, 영어 LaTeX를 생성한다. 정리 번호와 수식 번호는 공통 그래프를 기준으로 동기화된다.
+관련 schema는 `models/schemas/` 아래에 있다.
 
-## 릴리즈 자동화 구조
+## 6. 운영 준비도 100점 정책
 
-- CI: `.github/workflows/ci.yml`
-- Release: `.github/workflows/release.yml`
-- 로컬 자동 릴리즈: `scripts/release/create_release.py`
-- 자동 업데이트: `scripts/release/auto_update.py`
+이 저장소에서 말하는 "100점"은 과장된 완벽성을 의미하지 않는다. 운영 준비도 점수다. 구체적으로는 아래 의미를 가진다.
 
-`create_release.py`는 먼저 `doctor --strict`로 운영 준비도 100점을 확인한 뒤 테스트, 파이프라인 실행, 버전 계산, 태그 생성, 릴리즈 노트 생성을 자동화한다. 원격 인증이 없는 경우 로컬 태그와 노트만 생성하고 안내 메시지를 출력한다.
+- 활성 프로필의 필수 점검 항목이 모두 통과함
+- `doctor --strict`가 성공함
+- 워킹트리가 clean 상태임
+- 원격 저장소와 릴리즈 경로가 실제로 사용 가능함
+- 문서, 테스트, CI, Release 자동화가 연결되어 있음
 
-## GitHub 연동
+지원 프로필은 다음과 같다.
 
-1. 원격 저장소 연결
+- `local`: 로컬 무인 운영 준비도
+- `ci`: GitHub CI 준비도
+- `github_release`: GitHub 릴리즈 준비도
 
-```bash
-git remote add origin <YOUR_REPOSITORY_URL>
-```
+`github_release` 프로필에서는 `GITHUB_TOKEN`, `GITHUB_REPOSITORY`가 비어 있어도 `gh auth` 세션과 `origin` 원격 URL을 통해 자동 판정할 수 있다.
 
-2. 인증 정보 설정
+## 7. GitHub 운영 구조
 
-- `GITHUB_TOKEN`
-- `GITHUB_REPOSITORY` 예: `owner/repo`
+### 7.1 CI
 
-3. main 브랜치 push
+- 파일: `.github/workflows/ci.yml`
+- 역할: Ruff, doctor strict, pytest, 샘플 파이프라인 실행, 감사 로그 아티팩트 업로드
 
-```bash
-git push -u origin main
-```
+### 7.2 Release
 
-4. 태그 릴리즈
+- 파일: `.github/workflows/release.yml`
+- 역할: doctor strict, pytest, 샘플 파이프라인, 릴리즈 노트 생성, GitHub Release 자산 업로드
 
-```bash
-python3 scripts/release/create_release.py --mode github --bump patch
-```
+### 7.3 로컬 자동화 스크립트
 
-## 프로젝트 제한 사항
+- `scripts/release/create_release.py`: 테스트, doctor, 버전 증가, 태그 생성, 릴리즈 준비
+- `scripts/release/auto_update.py`: doctor, 테스트, 샘플 실행, 커밋, 선택적 push 및 태그 릴리즈
 
-- 기본 데이터 저장소는 SQLite 또는 JSON 파일 기반 시작 구성이며 대규모 분산 환경은 후속 확장 대상이다.
-- Lean 전체 프로젝트 빌드는 로컬 Lean 설치 여부에 따라 자동 시도 후 결과를 보고서에 기록한다.
-- 이 시스템은 "모든 수학 난제를 자동으로 해결하는 완성형 엔진"이 아니다.
-- 이 시스템의 현재 강점은 연구 파이프라인 자동화, 추적성, 감사 가능성, 제출 아티팩트 생성이다.
+## 8. 출력물 위치
 
-## 향후 개선 방향
+- `data/audit_logs/`: 감사 로그와 실행 요약
+- `data/registry/`: problem registry, status history
+- `data/normalized/`: normalized JSON, score JSON
+- `data/experiments/`: counterexample report
+- `data/proof_dag/`: proof DAG
+- `data/theorem_store/`: verification report
+- `formal/generated_skeletons/`: Lean skeleton
+- `formal/proof_obligations/`: formalization report
+- `papers/ko/`, `papers/en/`: 논문 초안
+- `papers/builds/`: PDF와 paper manifest
+- `data/paper_assets/releases/`: zip, tar.gz, checksums, release note
 
-- Neo4j 기반 proof graph 저장 확장
-- SAT, SMT 기반 반례 탐색 플러그인 추가
-- 다중 형식검증기 연동
-- 원격 계산 노드 스케줄러 확장
-- 저널별 제출 규격 프로파일 추가
+각 디렉터리별 세부 의미는 해당 경로의 `README.md`를 참고한다.
 
-## 현실 점검 문서
+## 9. 문서 안내
 
-- 현재 수준 점검: `PROGRAM_REALITY_CHECK_KO.md`
-- 100점 로드맵: `PROGRAM_100_SCORE_ROADMAP_KO.md`
+핵심 문서는 아래 순서로 읽는 것이 좋다.
+
+1. [README.md](./README.md)
+2. [PROGRAM_USER_GUIDE.md](./PROGRAM_USER_GUIDE.md)
+3. [PROGRAM_DETAILED_DESIGN.md](./PROGRAM_DETAILED_DESIGN.md)
+4. [CONTRIBUTING.md](./CONTRIBUTING.md)
+5. [CHANGELOG.md](./CHANGELOG.md)
+6. [docs/README.md](./docs/README.md)
+7. [PROGRAM_REALITY_CHECK_KO.md](./PROGRAM_REALITY_CHECK_KO.md)
+8. [PROGRAM_100_SCORE_ROADMAP_KO.md](./PROGRAM_100_SCORE_ROADMAP_KO.md)
+
+## 10. 현재 상태
+
+이 저장소는 현재 다음을 실제로 통과한 상태를 기준으로 운영된다.
+
+- 로컬 `doctor --profile local --strict`
+- GitHub `ci` 워크플로우
+- GitHub `release` 워크플로우
+- 태그 릴리즈와 자산 업로드
+
+최신 변경 이력은 [CHANGELOG.md](./CHANGELOG.md)에서 관리한다.
