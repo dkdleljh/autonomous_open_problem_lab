@@ -87,6 +87,7 @@ python3 -m venv .venv
 - "모든 수학 난제를 해결할 수 있는가"를 점수화하는 명령은 아니다.
 - `--strict`를 붙이면 활성 프로필의 필수 점검 항목을 모두 만족해야 종료 코드 0이 나온다.
 - 프로필은 `local`, `ci`, `github_release`를 지원한다.
+- `github_release` 프로필에서는 `GITHUB_TOKEN`, `GITHUB_REPOSITORY`가 없더라도 `gh auth token`과 `origin` 원격 URL이 있으면 자동으로 대체 판단한다.
 
 ## 7. 결과 해석 방법
 

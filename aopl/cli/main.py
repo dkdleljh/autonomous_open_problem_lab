@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -236,6 +237,26 @@ def _run_optional(command: list[str], cwd: Path) -> tuple[int, str, str]:
     return result.returncode, result.stdout.strip(), result.stderr.strip()
 
 
+def _detect_github_token(root: Path) -> bool:
+    if os.environ.get("GITHUB_TOKEN"):
+        return True
+    code, out, _ = _run_optional(["gh", "auth", "token"], root)
+    return code == 0 and bool(out)
+
+
+def _detect_github_repository(root: Path) -> str:
+    repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    if repository:
+        return repository
+    code, out, _ = _run_optional(["git", "remote", "get-url", "origin"], root)
+    if code != 0 or not out:
+        return ""
+    match = re.search(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/.]+)(?:\.git)?$", out)
+    if not match:
+        return ""
+    return f"{match.group('owner')}/{match.group('repo')}"
+
+
 def _command_doctor(args: argparse.Namespace) -> None:
     root = _root_from_args(args)
     quality_policy = ConfigStore(root).quality_policy().get("doctor", {})
@@ -328,12 +349,13 @@ def _command_doctor(args: argparse.Namespace) -> None:
         profiles=["github_release"],
     )
 
-    github_token = bool(os.environ.get("GITHUB_TOKEN"))
-    github_repo = bool(os.environ.get("GITHUB_REPOSITORY"))
+    github_token = _detect_github_token(root)
+    github_repository_value = _detect_github_repository(root)
+    github_repo = bool(github_repository_value)
     add_check(
         "GITHUB_TOKEN",
         github_token,
-        "환경변수 설정 여부",
+        "환경변수 또는 gh auth token 확인",
         "release",
         weight=2,
         profiles=["github_release"],
@@ -341,7 +363,7 @@ def _command_doctor(args: argparse.Namespace) -> None:
     add_check(
         "GITHUB_REPOSITORY",
         github_repo,
-        "환경변수 설정 여부",
+        github_repository_value or "환경변수 또는 origin 원격에서 저장소 추론 실패",
         "release",
         weight=2,
         profiles=["github_release"],

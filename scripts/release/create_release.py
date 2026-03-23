@@ -22,6 +22,29 @@ def run_optional(command: list[str], cwd: Path) -> tuple[int, str, str]:
     return result.returncode, result.stdout.strip(), result.stderr.strip()
 
 
+def detect_github_token(repo: Path) -> str:
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    if token:
+        return token
+    code, out, _ = run_optional(["gh", "auth", "token"], repo)
+    if code == 0 and out:
+        return out
+    return ""
+
+
+def detect_github_repository(repo: Path) -> str:
+    repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    if repository:
+        return repository
+    code, out, _ = run_optional(["git", "remote", "get-url", "origin"], repo)
+    if code != 0 or not out:
+        return ""
+    match = re.search(r"github\.com[:/]([^/]+)/([^/.]+)(?:\.git)?$", out)
+    if not match:
+        return ""
+    return f"{match.group(1)}/{match.group(2)}"
+
+
 def parse_version(tag: str) -> tuple[int, int, int]:
     match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
     if not match:
@@ -91,14 +114,18 @@ def push_release(repo: Path, new_tag: str, mode: str, notes_file: Path) -> None:
     run(["git", "push", "origin", "main"], repo)
     run(["git", "push", "origin", new_tag], repo)
     if mode == "github":
-        token = os.environ.get("GITHUB_TOKEN", "")
-        repository = os.environ.get("GITHUB_REPOSITORY", "")
+        token = detect_github_token(repo)
+        repository = detect_github_repository(repo)
         if not token:
-            raise RuntimeError("GITHUB_TOKEN 환경변수가 없어 GitHub 릴리즈를 생성할 수 없습니다.")
+            raise RuntimeError(
+                "GITHUB_TOKEN 환경변수 또는 gh 로그인 세션이 없어 GitHub 릴리즈를 생성할 수 없습니다."
+            )
         if not repository:
             raise RuntimeError(
-                "GITHUB_REPOSITORY 환경변수가 없어 GitHub 릴리즈를 생성할 수 없습니다."
+                "GITHUB_REPOSITORY 환경변수 또는 origin 원격 정보가 없어 GitHub 릴리즈를 생성할 수 없습니다."
             )
+        os.environ["GITHUB_TOKEN"] = token
+        os.environ["GITHUB_REPOSITORY"] = repository
         run(
             [
                 "gh",

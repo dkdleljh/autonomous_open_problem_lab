@@ -276,6 +276,8 @@ class PaperGenerator:
             check=False,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         log_path = self.build_log_dir / f"{tex_path.stem}_latex.log"
         write_text(log_path, (run.stdout or "") + "\n" + (run.stderr or ""))

@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from aopl.apps.orchestrator import Orchestrator
+import aopl.cli.main as cli_main
 from aopl.cli.main import _command_doctor, _command_submission, _command_verify, _load_normalized, build_parser
 from aopl.core.io_utils import read_json, read_yaml, write_json, write_yaml
 
@@ -157,3 +158,27 @@ def test_cli_doctor_strict_exits_when_policy_unmet(tmp_path, capsys):
     assert payload["active_profile"] == "local"
     assert payload["strict_passed"] is False
     assert payload["blocking_checks"]
+
+
+def test_cli_doctor_accepts_github_fallback_sources(tmp_path, capsys, monkeypatch):
+    project_root = prepare_project_root(tmp_path)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    original = cli_main._run_optional
+
+    def fake_run_optional(command: list[str], cwd: Path) -> tuple[int, str, str]:
+        if command == ["gh", "auth", "token"]:
+            return 0, "gho_test_token", ""
+        if command == ["git", "remote", "get-url", "origin"]:
+            return 0, "https://github.com/example/autonomous_open_problem_lab.git", ""
+        return original(command, cwd)
+
+    monkeypatch.setattr(cli_main, "_run_optional", fake_run_optional)
+    _command_doctor(
+        Namespace(root=str(project_root), profile="github_release", strict=False, min_score=None)
+    )
+    payload = json.loads(capsys.readouterr().out)
+
+    checks = {item["name"]: item for item in payload["checks"]}
+    assert checks["GITHUB_TOKEN"]["passed"] is True
+    assert checks["GITHUB_REPOSITORY"]["passed"] is True
