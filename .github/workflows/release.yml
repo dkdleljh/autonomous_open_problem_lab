@@ -1,0 +1,60 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "릴리즈 태그"
+        required: false
+        default: "v0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 파이썬 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 의존성 설치
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .[dev]
+
+      - name: 테스트 실행
+        run: pytest -q
+
+      - name: 문서 및 파이프라인 검증
+        run: |
+          python -m aopl run-all --limit 1 --root .
+          python -m aopl submission --root .
+
+      - name: 릴리즈 노트 생성
+        run: |
+          TAG_NAME=${GITHUB_REF_NAME}
+          if [ -z "$TAG_NAME" ]; then TAG_NAME=${{ inputs.tag }}; fi
+          python scripts/release/generate_release_notes.py --tag "$TAG_NAME" --output data/paper_assets/releases/release_notes_generated.md
+
+      - name: 릴리즈 생성
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: data/paper_assets/releases/release_notes_generated.md
+          files: |
+            data/paper_assets/releases/*.zip
+            data/paper_assets/releases/*.tar.gz
+            data/paper_assets/releases/*checksums.txt
+            papers/builds/*.pdf
+            papers/builds/*paper_manifest.json

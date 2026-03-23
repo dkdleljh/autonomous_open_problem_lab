@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/paper_manifest_schema.json",
+  "title": "PaperManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "problem_id",
+    "theorem_numbers",
+    "equation_numbers",
+    "reference_keys",
+    "ko_tex",
+    "en_tex",
+    "bib_file",
+    "appendix_file",
+    "pdf_file"
+  ],
+  "properties": {
+    "problem_id": {
+      "type": "string",
+      "pattern": "^prob_[a-z0-9_]+$"
+    },
+    "theorem_numbers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "equation_numbers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "reference_keys": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "ko_tex": {
+      "type": "string"
+    },
+    "en_tex": {
+      "type": "string"
+    },
+    "bib_file": {
+      "type": "string"
+    },
+    "appendix_file": {
+      "type": "string"
+    },
+    "pdf_file": {
+      "type": "string"
+    }
+  }
+}

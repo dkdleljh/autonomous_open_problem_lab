@@ -1,0 +1,24 @@
+template_profile: math_journal_plus_arxiv
+latex:
+  documentclass: article
+  font_size: 11pt
+  packages:
+    - amsmath
+    - amsthm
+    - amssymb
+    - hyperref
+sections:
+  - title
+  - abstract
+  - background
+  - related_work
+  - definitions_and_notation
+  - core_idea
+  - lemmas
+  - main_theorem
+  - proof
+  - computational_verification
+  - limitations
+  - reproducibility
+  - references
+  - appendix

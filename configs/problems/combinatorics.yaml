@@ -1,0 +1,12 @@
+domain: combinatorics
+enabled: true
+priority_boost: 1.02
+formalization_hints:
+  - Mathlib.Combinatorics.SetFamily.Shatter
+  - Mathlib.Data.Finset.Basic
+default_search_bounds:
+  set_size_limit: 24
+  family_size_limit: 100
+preferred_problem_types:
+  - 극값문제
+  - 구성적반례탐색

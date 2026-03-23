@@ -1,0 +1,13 @@
+logging:
+  level: INFO
+  file: data/audit_logs/runtime.log
+  jsonl_audit: data/audit_logs/pipeline_audit.jsonl
+metrics:
+  enabled: true
+  file: data/audit_logs/metrics.jsonl
+trace:
+  enabled: true
+  file: data/audit_logs/trace.jsonl
+alerts:
+  on_gate_block: true
+  on_release_failure: true

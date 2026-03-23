@@ -1,0 +1,3 @@
+[workspace]
+members = ["counterexample_core"]
+resolver = "2"

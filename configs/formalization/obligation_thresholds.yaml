@@ -1,0 +1,5 @@
+max_unresolved_obligations: 12
+max_unresolved_for_release: 8
+gate_policy:
+  block_if_above_threshold: true
+  allow_attempt_with_report: true

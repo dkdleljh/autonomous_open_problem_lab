@@ -1,0 +1,5 @@
+connectors:
+  - name: sample_registry
+    type: json_file
+    path: data/raw_sources/sample_open_problems.json
+    enabled: true

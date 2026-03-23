@@ -1,0 +1,10 @@
+domain: millennium
+enabled: true
+priority_boost: 0.55
+phase: follow_up
+policy:
+  direct_first_target: false
+  include_registry: true
+  require_formalization_plan: true
+notes:
+  - 밀레니엄 난제는 레지스트리에 포함하되 1차 자동 공략군에서는 제외한다.

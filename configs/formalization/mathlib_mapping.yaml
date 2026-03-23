@@ -1,0 +1,11 @@
+declaration_mapping:
+  graph:
+    simple_graph: Mathlib.Combinatorics.SimpleGraph.Basic
+    connected: Mathlib.Combinatorics.SimpleGraph.Connectivity
+  number_theory:
+    nat: Mathlib.Data.Nat.Basic
+    int: Mathlib.Data.Int.Basic
+notation_normalization:
+  "V(G)": "SimpleGraph.vertexSet"
+  "E(G)": "SimpleGraph.edgeSet"
+  "n": "Nat"

@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# Build
+build/
+dist/
+
+# Data artifacts
+data/audit_logs/*.log
+data/audit_logs/pipeline_audit.jsonl
+data/audit_logs/verification_log.jsonl
+data/audit_logs/last_run_summary.json
+data/experiments/*.tmp
+papers/builds/*.pdf
+data/paper_assets/releases/
+data/raw_sources/harvest_snapshot_*.json
+data/raw_sources/latest_harvest.json
+data/registry/problem_registry.json
+data/registry/status_history.json
+data/normalized/*_normalized.json
+data/normalized/*_score.json
+data/proof_dag/*_proof_dag.json
+data/proof_dag/failure_memory.json
+data/theorem_store/*_verification.json
+data/experiments/*_counterexample.json
+formal/generated_skeletons/prob_*.lean
+formal/proof_obligations/*_formalization_report.json
+formal/proof_obligations/*_lean_build.log
+papers/ko/prob_*.tex
+papers/en/prob_*.tex
+papers/shared/prob_*.bib
+papers/shared/prob_*_appendix.md
+papers/shared/prob_*_semantic_graph.json
+papers/builds/prob_*.pdf
+papers/builds/prob_*_paper_manifest.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Secrets
+.env
+*.token
+*.key

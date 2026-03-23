@@ -1,0 +1,9 @@
+name: daily_harvest
+entry_command: aopl harvest
+schedule_cron: "0 2 * * *"
+steps:
+  - harvest
+  - register
+outputs:
+  - data/raw_sources/latest_harvest.json
+  - data/registry/problem_registry.json

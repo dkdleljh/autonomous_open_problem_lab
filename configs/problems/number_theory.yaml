@@ -1,0 +1,12 @@
+domain: number_theory
+enabled: true
+priority_boost: 1.03
+formalization_hints:
+  - Mathlib.Data.Nat.Basic
+  - Mathlib.NumberTheory.ModularForms.Basic
+default_search_bounds:
+  n_upper_bound: 50000
+  modular_base_limit: 100
+preferred_problem_types:
+  - 합동조건
+  - 약화형탐색

@@ -1,0 +1,13 @@
+terms:
+  정리: theorem
+  보조정리: lemma
+  증명: proof
+  반례: counterexample
+  형식화: formalization
+  재현성: reproducibility
+  계산 검증: computational verification
+number_sync:
+  theorem: true
+  lemma: true
+  equation: true
+  reference: true

@@ -1,0 +1,10 @@
+name: publication_run
+entry_command: aopl submission
+schedule_cron: "0 5 * * 6"
+steps:
+  - paper_generation
+  - paper_qa
+  - package
+  - release
+outputs:
+  - data/paper_assets/releases

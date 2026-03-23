@@ -1,0 +1,29 @@
+{
+  "problem_id": "prob_example",
+  "root_node": "n0",
+  "target_node": "n3",
+  "nodes": [
+    {
+      "node_id": "n0",
+      "node_type": "definition",
+      "title": "정의 정렬",
+      "statement": "기본 정의를 통일한다.",
+      "dependencies": [],
+      "status": "ready"
+    },
+    {
+      "node_id": "n1",
+      "node_type": "lemma",
+      "title": "보조정리 후보",
+      "statement": "환원을 위한 보조정리",
+      "dependencies": ["n0"],
+      "status": "candidate"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n0",
+      "to": "n1"
+    }
+  ]
+}

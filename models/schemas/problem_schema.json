@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aopl.local/schemas/problem_schema.json",
+  "title": "ProblemRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "problem_id",
+    "title",
+    "domain",
+    "statement",
+    "assumptions",
+    "goal",
+    "aliases",
+    "sources",
+    "status"
+  ],
+  "properties": {
+    "problem_id": {
+      "type": "string",
+      "pattern": "^prob_[a-z0-9_]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3
+    },
+    "domain": {
+      "type": "string",
+      "enum": [
+        "graph_theory",
+        "number_theory",
+        "combinatorics",
+        "millennium",
+        "unknown"
+      ]
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 10
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 2
+      }
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 5
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "url", "type", "reliability"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "type": {
+            "type": "string"
+          },
+          "reliability": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "REGISTERED",
+        "HARVESTED",
+        "NORMALIZED",
+        "SCORED",
+        "SELECTED",
+        "COUNTEREXAMPLE_CHECKED",
+        "LEMMA_GRAPH_BUILT",
+        "DRAFT_PROOF_CREATED",
+        "INTERNAL_VERIFICATION_PASSED",
+        "FORMALIZATION_ATTEMPTED",
+        "PAPER_DRAFT_GENERATED",
+        "PAPER_QA_PASSED",
+        "SUBMISSION_PACKAGE_READY",
+        "RELEASED",
+        "BLOCKED"
+      ]
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

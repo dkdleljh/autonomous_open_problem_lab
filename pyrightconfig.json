@@ -1,0 +1,11 @@
+{
+  "include": ["aopl", "tests", "scripts"],
+  "exclude": [".venv", "**/__pycache__"],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportImportCycles": "none",
+  "reportImplicitRelativeImport": "none",
+  "venvPath": ".",
+  "venv": ".venv"
+}

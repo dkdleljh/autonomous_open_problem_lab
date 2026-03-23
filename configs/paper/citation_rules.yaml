@@ -1,0 +1,8 @@
+citation:
+  style: numeric
+  require_bibtex: true
+  require_url_or_doi: true
+  conflict_policy: block_on_unresolved_conflict
+consistency:
+  require_shared_reference_graph: true
+  require_ko_en_reference_index_sync: true

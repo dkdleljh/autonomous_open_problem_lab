@@ -1,0 +1,15 @@
+metadata_db:
+  engine: sqlite
+  path: data/registry/aopl.db
+graph_store:
+  backend: networkx
+  path: data/proof_dag
+artifact_store:
+  backend: local_fs
+  root: data/paper_assets
+cache:
+  backend: local_fs
+  root: services/cache
+retention:
+  audit_log_days: 365
+  experiment_artifact_days: 365

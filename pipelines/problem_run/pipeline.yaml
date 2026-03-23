@@ -1,0 +1,9 @@
+name: problem_run
+entry_command: aopl run-all --limit 1
+schedule_cron: "15 */6 * * *"
+steps:
+  - select_one
+  - run_full_pipeline
+outputs:
+  - data/theorem_store
+  - data/proof_dag

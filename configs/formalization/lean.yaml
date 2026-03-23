@@ -1,0 +1,11 @@
+toolchain: lean4
+entry_imports:
+  - Mathlib
+  - Mathlib.Data.Nat.Basic
+  - Mathlib.Combinatorics.SimpleGraph.Basic
+build:
+  try_build: true
+  fallback_mode: skeleton_only
+logging:
+  build_log_dir: formal/proof_obligations
+  report_file_suffix: _formalization_report.json

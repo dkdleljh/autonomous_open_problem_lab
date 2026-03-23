@@ -1,0 +1,24 @@
+required_sections:
+  - 제목
+  - 초록
+  - 배경
+  - 관련 연구
+  - 정의와 표기
+  - 핵심 아이디어
+  - 보조정리
+  - 주정리
+  - 증명
+  - 계산 검증
+  - 한계
+  - 재현성
+  - 참고문헌
+  - 부록
+forbidden_expressions:
+  - 자명하다
+  - 생략한다
+  - 유사하게
+  - 당연하다
+checks:
+  require_seed_and_bounds: true
+  require_formalization_status: true
+  require_counterexample_scope: true

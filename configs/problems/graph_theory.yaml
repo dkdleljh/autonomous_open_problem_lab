@@ -1,0 +1,12 @@
+domain: graph_theory
+enabled: true
+priority_boost: 1.05
+formalization_hints:
+  - Mathlib.Combinatorics.SimpleGraph.Basic
+  - Mathlib.Combinatorics.SimpleGraph.Connectivity
+default_search_bounds:
+  max_vertices: 12
+  max_edges: 30
+preferred_problem_types:
+  - 최소반례분해
+  - 불변량기반

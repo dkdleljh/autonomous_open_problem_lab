@@ -1,0 +1,15 @@
+queue_backend: local_file_queue
+queue_file: data/audit_logs/pipeline_queue.json
+max_pending_jobs: 100
+priority_levels:
+  - high
+  - medium
+  - low
+scheduling:
+  unattended: true
+  daily_harvest_cron: "0 2 * * *"
+  weekly_rebuild_cron: "30 3 * * 1"
+  publication_cron: "0 5 * * 6"
+retry_policy:
+  max_attempts: 2
+  backoff_seconds: 30

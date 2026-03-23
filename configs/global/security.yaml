@@ -1,0 +1,15 @@
+secrets_policy:
+  hardcode_forbidden: true
+  env_vars:
+    - GITHUB_TOKEN
+    - GITHUB_REPOSITORY
+    - GIT_AUTHOR_NAME
+    - GIT_AUTHOR_EMAIL
+audit:
+  enabled: true
+  file: data/audit_logs/security_audit.jsonl
+network:
+  allow_external_harvest: true
+  request_timeout_seconds: 20
+release:
+  require_clean_worktree: false

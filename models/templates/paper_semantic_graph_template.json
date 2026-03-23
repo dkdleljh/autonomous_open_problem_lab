@@ -1,0 +1,18 @@
+{
+  "problem_id": "prob_example",
+  "theorem_numbers": ["정리 1", "보조정리 1"],
+  "equation_numbers": ["(1)", "(2)"],
+  "sections": [
+    "배경",
+    "관련 연구",
+    "정의와 표기",
+    "핵심 아이디어",
+    "보조정리",
+    "주정리",
+    "증명",
+    "계산 검증",
+    "한계",
+    "재현성"
+  ],
+  "reference_keys": ["ref1"]
+}

@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 파이썬 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 의존성 설치
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .[dev]
+
+      - name: 정적 검사
+        run: ruff check aopl tests scripts
+
+      - name: 테스트 실행
+        run: pytest -q
+
+      - name: 무인 파이프라인 샘플 실행
+        run: python -m aopl run-all --limit 1 --root .
+
+      - name: 실행 요약 아티팩트 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-audit-summary
+          path: |
+            data/audit_logs/last_run_summary.json
+            data/audit_logs/pipeline_audit.jsonl

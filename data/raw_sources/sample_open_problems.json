@@ -1,0 +1,60 @@
+[
+  {
+    "title": "그래프 최소 반례 기반 분해 가능성 후보",
+    "domain": "graph_theory",
+    "statement": "모든 단순 연결 그래프 G에 대해 조건 C가 성립한다는 추측의 최소 반례 분해 경로가 존재하는지 탐색한다.",
+    "assumptions": [
+      "그래프는 유한 단순 무방향 그래프이다.",
+      "최소 반례는 꼭짓점 수 기준 최소를 사용한다."
+    ],
+    "goal": "최소 반례가 존재하면 특정 분해 불변량 위반을 강제하는 보조정리 후보를 자동 생성한다.",
+    "aliases": [
+      "최소 반례 분해 추측",
+      "graph minimal counterexample decomposition"
+    ],
+    "sources": [
+      {
+        "name": "공개 문제 목록 샘플",
+        "url": "https://example.org/open-problems/graph",
+        "type": "registry",
+        "reliability": 0.9
+      }
+    ],
+    "metadata": {
+      "tags": [
+        "counterexample",
+        "decomposition"
+      ],
+      "toy_counterexample_rule": "none"
+    }
+  },
+  {
+    "title": "짧은 정수론 합동 조건 약화형 탐색 후보",
+    "domain": "number_theory",
+    "statement": "양의 정수 n에 대해 특정 합동 조건을 만족하는 구조가 무한히 존재하는지의 강한형과 약화형을 자동 분해한다.",
+    "assumptions": [
+      "정수 집합에서 합동 연산을 사용한다.",
+      "탐색 범위는 실행 예산 안에서 제한한다."
+    ],
+    "goal": "강한형이 반례로 붕괴하면 약화형 명제를 자동 생성하고 후속 증명 탐색으로 전달한다.",
+    "aliases": [
+      "합동 약화형 후보",
+      "modular weakening candidate"
+    ],
+    "sources": [
+      {
+        "name": "정수론 문제 모음 샘플",
+        "url": "https://example.org/open-problems/number-theory",
+        "type": "registry",
+        "reliability": 0.88
+      }
+    ],
+    "metadata": {
+      "tags": [
+        "modular",
+        "weak_form"
+      ],
+      "toy_counterexample_rule": "strong_variant_false_small_n"
+    }
+  }
+]
