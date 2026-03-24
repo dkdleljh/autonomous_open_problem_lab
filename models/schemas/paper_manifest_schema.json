@@ -17,7 +17,8 @@
     "pdf_file",
     "pdf_build_attempted",
     "pdf_build_success",
-    "pdf_artifact_kind"
+    "pdf_artifact_kind",
+    "incident_summary"
   ],
   "properties": {
     "problem_id": {
@@ -72,6 +73,9 @@
     },
     "pdf_artifact_kind": {
       "type": "string"
+    },
+    "incident_summary": {
+      "type": "object"
     }
   }
 }

@@ -1,0 +1,277 @@
+{
+  "doctor_score": 95.8,
+  "active_profile_score": 94.4,
+  "active_profile": "local",
+  "strict_passed": false,
+  "policy": {
+    "default_profile": "local",
+    "required_checks": [
+      "프로젝트 루트",
+      "git 저장소",
+      "원격 origin",
+      "현재 브랜치",
+      "워킹트리 청결",
+      "pytest 사용 가능",
+      "핵심 한글 문서",
+      "GitHub 워크플로우"
+    ],
+    "min_score": 100.0
+  },
+  "summary": {
+    "total_checks": 17,
+    "passed_checks": 16,
+    "failed_checks": 1,
+    "profile_checks": 13,
+    "profile_failed_checks": 1
+  },
+  "category_summary": {
+    "workspace": {
+      "passed": 1,
+      "total": 1
+    },
+    "git": {
+      "passed": 3,
+      "total": 4
+    },
+    "tooling": {
+      "passed": 5,
+      "total": 5
+    },
+    "release": {
+      "passed": 3,
+      "total": 3
+    },
+    "docs": {
+      "passed": 1,
+      "total": 1
+    },
+    "policy": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "blocking_checks": [
+    {
+      "name": "워킹트리 청결",
+      "detail": "미커밋 변경 존재"
+    }
+  ],
+  "checks": [
+    {
+      "name": "프로젝트 루트",
+      "passed": true,
+      "detail": "/home/zenith/Desktop/autonomous_open_problem_lab",
+      "category": "workspace",
+      "weight": 1,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "git 저장소",
+      "passed": true,
+      "detail": ".git 존재 여부",
+      "category": "git",
+      "weight": 1,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "원격 origin",
+      "passed": true,
+      "detail": "https://github.com/dkdleljh/autonomous_open_problem_lab.git",
+      "category": "git",
+      "weight": 1,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "현재 브랜치",
+      "passed": true,
+      "detail": "main",
+      "category": "git",
+      "weight": 1,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "워킹트리 청결",
+      "passed": false,
+      "detail": "미커밋 변경 존재",
+      "category": "git",
+      "weight": 1,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "pytest 사용 가능",
+      "passed": true,
+      "detail": "pytest 실행 파일 확인",
+      "category": "tooling",
+      "weight": 1,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "Lean",
+      "passed": true,
+      "detail": "lean 실행 파일 확인",
+      "category": "tooling",
+      "weight": 1,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "Lake",
+      "passed": true,
+      "detail": "lake 실행 파일 확인",
+      "category": "tooling",
+      "weight": 1,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "LaTeX",
+      "passed": true,
+      "detail": "latexmk/pdflatex 확인",
+      "category": "tooling",
+      "weight": 1,
+      "profiles": [
+        "github_release"
+      ]
+    },
+    {
+      "name": "GitHub CLI",
+      "passed": true,
+      "detail": "gh 실행 파일 확인",
+      "category": "tooling",
+      "weight": 1,
+      "profiles": [
+        "github_release"
+      ]
+    },
+    {
+      "name": "GITHUB_TOKEN",
+      "passed": true,
+      "detail": "환경변수 또는 gh auth token 확인",
+      "category": "release",
+      "weight": 2,
+      "profiles": [
+        "github_release"
+      ]
+    },
+    {
+      "name": "GITHUB_REPOSITORY",
+      "passed": true,
+      "detail": "dkdleljh/autonomous_open_problem_lab",
+      "category": "release",
+      "weight": 2,
+      "profiles": [
+        "github_release"
+      ]
+    },
+    {
+      "name": "핵심 한글 문서",
+      "passed": true,
+      "detail": "누락 없음",
+      "category": "docs",
+      "weight": 2,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "GitHub 워크플로우",
+      "passed": true,
+      "detail": "누락 없음",
+      "category": "release",
+      "weight": 1,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "무인 재시도 정책",
+      "passed": true,
+      "detail": "max_retry_per_stage=2, backoff_seconds=30",
+      "category": "policy",
+      "weight": 2,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "릴리즈 안전 정책",
+      "passed": true,
+      "detail": "demo release 차단, formal/pdf/verification 강제",
+      "category": "policy",
+      "weight": 3,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    },
+    {
+      "name": "Transient 승격 정책",
+      "passed": true,
+      "detail": "lookback/threshold policy configured",
+      "category": "policy",
+      "weight": 2,
+      "profiles": [
+        "local",
+        "ci",
+        "github_release"
+      ]
+    }
+  ],
+  "incident_summary": null,
+  "runtime_policy_summary": {
+    "max_retry_per_stage": 2,
+    "retry_backoff_seconds": 30,
+    "transient_failure_lookback_days": 7,
+    "default_transient_failure_escalation_threshold": 3,
+    "stage_transient_failure_thresholds": {
+      "Normalize": 3,
+      "Proof": 2,
+      "Formalization": 2
+    }
+  },
+  "policy_lint_summary": {
+    "total_policy_checks": 3,
+    "failed_policy_checks": 0
+  },
+  "interpretation": {
+    "100점 의미": "활성 프로필에서 요구하는 핵심 운영 조건을 전부 충족한 상태",
+    "주의": "이 점수는 운영 준비도 점수이며, 모든 수학 난제 해결 능력 점수가 아니다"
+  }
+}

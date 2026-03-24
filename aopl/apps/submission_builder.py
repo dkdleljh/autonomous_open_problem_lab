@@ -4,7 +4,15 @@ import tarfile
 import zipfile
 from pathlib import Path
 
-from aopl.core.io_utils import ensure_dir, now_utc_iso, sha256_file, write_json, write_text
+from aopl.core.io_utils import (
+    ensure_dir,
+    now_utc_iso,
+    read_json,
+    resolve_under_root,
+    sha256_file,
+    write_json,
+    write_text,
+)
 from aopl.core.schema_utils import validate_schema
 from aopl.core.types import (
     FormalizationReport,
@@ -19,16 +27,35 @@ class SubmissionBuilder:
         self.root = root
         self.release_dir = ensure_dir(root / "data" / "paper_assets" / "releases")
 
+    def _incident_summary(self) -> dict[str, object]:
+        payload = read_json(self.root / "data" / "audit_logs" / "last_incident_summary.json", default={})
+        return payload if isinstance(payload, dict) else {}
+
+    def _doctor_summary(self) -> dict[str, object]:
+        payload = read_json(self.root / "data" / "audit_logs" / "last_doctor_report.json", default={})
+        return payload if isinstance(payload, dict) else {}
+
     def _collect_files(self, manifest: PaperManifest) -> list[Path]:
         files = [
-            self.root / manifest.ko_tex,
-            self.root / manifest.en_tex,
-            self.root / manifest.bib_file,
-            self.root / manifest.appendix_file,
-            self.root / manifest.pdf_file,
-            self.root / "papers" / "builds" / f"{manifest.problem_id}_paper_manifest.json",
+            resolve_under_root(self.root, manifest.ko_tex),
+            resolve_under_root(self.root, manifest.en_tex),
+            resolve_under_root(self.root, manifest.bib_file),
+            resolve_under_root(self.root, manifest.appendix_file),
+            resolve_under_root(self.root, manifest.pdf_file),
+            resolve_under_root(
+                self.root, Path("papers") / "builds" / f"{manifest.problem_id}_paper_manifest.json"
+            ),
         ]
-        return [file for file in files if file.exists()]
+        unique_files: list[Path] = []
+        seen: set[Path] = set()
+        for file in files:
+            if file.is_symlink():
+                raise ValueError(f"심볼릭 링크는 제출 패키지에 포함할 수 없습니다: {file}")
+            if file in seen or not file.exists():
+                continue
+            seen.add(file)
+            unique_files.append(file)
+        return unique_files
 
     def build(
         self,
@@ -72,6 +99,15 @@ class SubmissionBuilder:
             ),
             "warning_preview": verification.warnings[:2] if verification is not None else [],
         }
+        doctor_summary = self._doctor_summary()
+        failed_policy_checks = [
+            item.get("name")
+            for item in doctor_summary.get("checks", [])
+            if isinstance(item, dict)
+            and item.get("category") == "policy"
+            and item.get("passed") is False
+            and isinstance(item.get("name"), str)
+        ]
         notes = (
             f"# 릴리즈 노트\n\n"
             f"- 문제 식별자: {manifest.problem_id}\n"
@@ -87,6 +123,14 @@ class SubmissionBuilder:
             f"- 형식화 backend: {formal_report.backend if formal_report is not None else 'unknown'}\n"
             f"- 형식화 아티팩트 유형: {formal_report.artifact_kind if formal_report is not None else 'unknown'}\n"
             f"- 미해결 obligation 수: {len(formal_report.obligations_unresolved) if formal_report is not None else 'unknown'}\n"
+            f"- 최근 blocked 수: {self._incident_summary().get('blocked_count', 0)}\n"
+            f"- 최근 failure class 요약: {self._incident_summary().get('failure_class_summary', {})}\n"
+            f"- transient lookback days: {self._incident_summary().get('policy_context', {}).get('transient_failure_lookback_days', 'unknown')}\n"
+            f"- default transient escalation threshold: {self._incident_summary().get('policy_context', {}).get('default_transient_failure_escalation_threshold', 'unknown')}\n"
+            f"- stage transient thresholds: {self._incident_summary().get('policy_context', {}).get('stage_transient_failure_thresholds', {})}\n"
+            f"- doctor strict 통과: {doctor_summary.get('strict_passed', 'unknown')}\n"
+            f"- doctor 정책 lint 실패 수: {doctor_summary.get('policy_lint_summary', {}).get('failed_policy_checks', 'unknown')}\n"
+            f"- doctor 정책 lint 실패 항목: {failed_policy_checks if failed_policy_checks else 'none'}\n"
             f"- 생성 시각: {stamp}\n"
             f"- 포함 파일 수: {len(files)}\n"
             f"- 자동 품질 게이트 통과 후 생성됨\n"
@@ -117,6 +161,8 @@ class SubmissionBuilder:
                 ),
             },
             verification_summary=verification_summary,
+            incident_summary=self._incident_summary(),
+            doctor_summary=doctor_summary,
         )
         validate_schema(self.root, "submission_manifest_schema", submission.to_dict())
         write_json(self.release_dir / f"{base_name}_submission_manifest.json", submission.to_dict())

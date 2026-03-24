@@ -14,8 +14,31 @@ def ensure_dir(path: Path) -> Path:
     return path
 
 
+def resolve_under_root(root: Path, relative_path: str | Path) -> Path:
+    candidate = Path(relative_path)
+    if candidate.is_absolute():
+        raise ValueError("프로젝트 내부 경로에는 절대 경로를 사용할 수 없습니다.")
+    normalized = (root / candidate).resolve()
+    root_resolved = root.resolve()
+    try:
+        normalized.relative_to(root_resolved)
+    except ValueError as error:
+        raise ValueError("프로젝트 루트 밖의 경로는 허용되지 않습니다.") from error
+    return normalized
+
+
 def now_utc_iso() -> str:
     return datetime.now(tz=UTC).isoformat()
+
+
+def parse_utc_iso(value: str) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def slugify(value: str) -> str:
@@ -91,3 +114,35 @@ def write_text(path: Path, text: str) -> None:
 def read_text(path: Path) -> str:
     with path.open("r", encoding="utf-8") as file:
         return file.read()
+
+
+def escape_latex_text(value: str) -> str:
+    replacements = {
+        "\\": r"\textbackslash{}",
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+    }
+    escaped = []
+    for char in value:
+        escaped.append(replacements.get(char, char))
+    return "".join(escaped)
+
+
+def escape_lean_string(value: str) -> str:
+    return (
+        value.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\r", " ")
+        .replace("\n", " ")
+    )
+
+
+def escape_lean_comment(value: str) -> str:
+    return value.replace("-/", "- /").replace("/-", "/ -").replace("\r", " ").replace("\n", " ")

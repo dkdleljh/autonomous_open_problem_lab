@@ -41,6 +41,28 @@ def test_config_store_rejects_invalid_runtime_backend(tmp_path):
         ConfigStore(project_root).runtime()
 
 
+def test_config_store_rejects_invalid_transient_failure_escalation_threshold(tmp_path):
+    project_root = prepare_project_root(tmp_path)
+    runtime_file = project_root / "configs" / "global" / "runtime.yaml"
+    runtime = read_yaml(runtime_file, default={})
+    runtime["transient_failure_escalation_threshold"] = 0
+    write_yaml(runtime_file, runtime)
+
+    with pytest.raises(ValueError, match="transient_failure_escalation_threshold"):
+        ConfigStore(project_root).runtime()
+
+
+def test_config_store_rejects_invalid_transient_failure_stage_thresholds(tmp_path):
+    project_root = prepare_project_root(tmp_path)
+    runtime_file = project_root / "configs" / "global" / "runtime.yaml"
+    runtime = read_yaml(runtime_file, default={})
+    runtime["transient_failure_stage_thresholds"] = {"Normalize": 0}
+    write_yaml(runtime_file, runtime)
+
+    with pytest.raises(ValueError, match="transient_failure_stage_thresholds"):
+        ConfigStore(project_root).runtime()
+
+
 def test_config_store_rejects_invalid_scoring_threshold(tmp_path):
     project_root = prepare_project_root(tmp_path)
     scoring_file = project_root / "configs" / "scoring" / "default.yaml"

@@ -85,6 +85,18 @@ class ConfigStore:
     def paper_journal_style(self) -> dict[str, Any]:
         return self._load_dict(self.root / "configs" / "paper" / "journal_style.yaml")
 
+    def queue(self) -> dict[str, Any]:
+        data = self._load_dict(self.root / "configs" / "global" / "queue.yaml")
+        retry_policy = data.get("retry_policy", {})
+        if isinstance(retry_policy, dict):
+            max_attempts = retry_policy.get("max_attempts", 1)
+            backoff_seconds = retry_policy.get("backoff_seconds", 0)
+            if not isinstance(max_attempts, int) or max_attempts < 1:
+                raise ValueError("queue.retry_policy.max_attempts 는 1 이상의 정수여야 합니다.")
+            if not isinstance(backoff_seconds, int) or backoff_seconds < 0:
+                raise ValueError("queue.retry_policy.backoff_seconds 는 0 이상의 정수여야 합니다.")
+        return data
+
     def quality_policy(self) -> dict[str, Any]:
         data = self._load_dict(self.root / "configs" / "global" / "quality_policy.yaml")
         doctor = data.get("doctor", {})
@@ -120,6 +132,39 @@ class ConfigStore:
         return data
 
     def _validate_runtime(self, data: dict[str, Any]) -> None:
+        max_retry_per_stage = data.get("max_retry_per_stage", 0)
+        if not isinstance(max_retry_per_stage, int) or max_retry_per_stage < 0:
+            raise ValueError("runtime.max_retry_per_stage 는 0 이상의 정수여야 합니다.")
+        transient_failure_escalation_threshold = data.get("transient_failure_escalation_threshold", 3)
+        if (
+            not isinstance(transient_failure_escalation_threshold, int)
+            or transient_failure_escalation_threshold < 1
+        ):
+            raise ValueError(
+                "runtime.transient_failure_escalation_threshold 는 1 이상의 정수여야 합니다."
+            )
+        transient_failure_lookback_days = data.get("transient_failure_lookback_days", 7)
+        if not isinstance(transient_failure_lookback_days, int) or transient_failure_lookback_days < 1:
+            raise ValueError("runtime.transient_failure_lookback_days 는 1 이상의 정수여야 합니다.")
+        stage_thresholds = data.get("transient_failure_stage_thresholds", {})
+        if stage_thresholds is not None:
+            if not isinstance(stage_thresholds, dict):
+                raise ValueError("runtime.transient_failure_stage_thresholds 는 객체여야 합니다.")
+            for key, value in stage_thresholds.items():
+                if not isinstance(key, str) or not key:
+                    raise ValueError(
+                        "runtime.transient_failure_stage_thresholds 의 키는 비어 있지 않은 문자열이어야 합니다."
+                    )
+                if not isinstance(value, int) or value < 1:
+                    raise ValueError(
+                        "runtime.transient_failure_stage_thresholds 의 값은 1 이상의 정수여야 합니다."
+                    )
+        resource_budget = data.get("resource_budget", {})
+        if isinstance(resource_budget, dict):
+            for key in ["lean_timeout_seconds", "latex_timeout_seconds"]:
+                value = resource_budget.get(key, 120)
+                if not isinstance(value, int) or value <= 0:
+                    raise ValueError(f"runtime.resource_budget.{key} 는 0보다 큰 정수여야 합니다.")
         engines = data.get("engines", {})
         if isinstance(engines, dict):
             for key in [

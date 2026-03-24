@@ -42,7 +42,9 @@ python3 -m venv .venv
 
 실행 후 확인해야 할 대표 파일은 아래와 같다.
 
+- `data/audit_logs/last_doctor_report.json`
 - `data/audit_logs/last_run_summary.json`
+- `data/audit_logs/last_incident_summary.json`
 - `data/audit_logs/pipeline_audit.jsonl`
 - `data/theorem_store/*_verification.json`
 - `formal/proof_obligations/*_formalization_report.json`
@@ -140,6 +142,8 @@ python3 -m venv .venv
 - GitHub 인증 및 저장소 식별 가능 여부
 - 핵심 한글 문서 존재 여부
 - GitHub Actions 워크플로우 존재 여부
+- 최근 실행이 있었다면 마지막 incident summary 표시
+- 최근 doctor 실행이 있었다면 정책 lint와 strict 결과를 `last_doctor_report.json`으로 보존
 
 ### 6.6 GitHub 인증 fallback
 
@@ -195,6 +199,22 @@ python3 -m venv .venv
 - 위치: 릴리즈 패키지 내 `submission_manifest.json`
 - 의미: 포함 파일, 체크섬, verification summary, artifact summary
 
+### 7.10 incident summary
+
+- 위치: `data/audit_logs/last_incident_summary.json`
+- 의미: 최근 실행의 blocked 수, 런타임 예외 수, failure class 요약, 주요 차단 사유
+
+### 7.11 doctor report
+
+- 위치: `data/audit_logs/last_doctor_report.json`
+- 의미: 최근 doctor 점수, strict 통과 여부, 활성 프로필, 정책 lint 실패 수와 실패 항목
+
+### 7.12 generated release notes
+
+- 위치: `data/paper_assets/releases/release_notes_generated.md`
+- 의미: 최근 커밋뿐 아니라 `incident summary`, `doctor report`를 읽어 운영 위험과 정책 lint 상태를 함께 요약한 GitHub 릴리즈 본문
+- 동작: 운영 위험이 감지되면 release workflow는 기본적으로 이 단계에서 실패하며, 수동 `workflow_dispatch`에서만 override를 허용
+
 ## 8. 운영 절차
 
 ### 8.1 로컬 개발 루프
@@ -211,6 +231,8 @@ python3 -m venv .venv
 ```bash
 python3 scripts/release/auto_update.py --python .venv/bin/python --push
 ```
+
+`auto_update.py`는 기본적으로 `last_doctor_report.json`, `last_incident_summary.json` 기준으로 보수적으로 실패한다. `--allow-blocked-transient`를 주면 transient blocked를 허용하고, `--tag-release`를 함께 쓸 때는 동일한 의도로 `create_release.py --allow-operational-risk`까지 전달한다.
 
 이 스크립트는 doctor, 테스트, 샘플 실행, 커밋, 선택적 push를 묶는다.
 

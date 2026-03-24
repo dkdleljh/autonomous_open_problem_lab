@@ -3,10 +3,18 @@ autonomous_mode: true
 default_timezone: Asia/Seoul
 max_parallel_problems: 2
 max_retry_per_stage: 2
+transient_failure_escalation_threshold: 3
+transient_failure_lookback_days: 7
+transient_failure_stage_thresholds:
+  Normalize: 3
+  Proof: 2
+  Formalization: 2
 resource_budget:
   cpu_minutes_per_problem: 20
   memory_mb_per_problem: 2048
   wall_clock_minutes_per_problem: 45
+  lean_timeout_seconds: 120
+  latex_timeout_seconds: 120
 engines:
   counterexample_backend: demo
   proof_backend: demo

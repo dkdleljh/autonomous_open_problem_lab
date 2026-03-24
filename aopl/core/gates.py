@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from aopl.core.config_store import ConfigStore
+from aopl.core.io_utils import resolve_under_root
 
 
 def _is_dag(nodes: list[str], edges: list[tuple[str, str]]) -> bool:
@@ -84,12 +85,27 @@ class GatePolicy:
         edge_pairs = [(edge["from"], edge["to"]) for edge in dag_dict.get("edges", [])]
         root_node = dag_dict.get("root_node")
         target_node = dag_dict.get("target_node")
-        node_ids = [
-            node.get("node_id") for node in dag_dict.get("nodes", []) if isinstance(node, dict)
-        ]
-        node_ids = [node_id for node_id in node_ids if isinstance(node_id, str)]
+        node_payloads = [node for node in dag_dict.get("nodes", []) if isinstance(node, dict)]
+        node_ids = [node.get("node_id") for node in node_payloads if isinstance(node.get("node_id"), str)]
+        node_id_set = set(node_ids)
         if root_node is None or target_node is None:
             return False, "proof DAG 루트 또는 목표 노드 누락"
+        if len(node_ids) != len(node_id_set):
+            return False, "proof DAG 중복 노드 ID 감지"
+        if root_node not in node_id_set or target_node not in node_id_set:
+            return False, "proof DAG 루트 또는 목표 노드가 실제 노드 목록에 없음"
+        for edge_from, edge_to in edge_pairs:
+            if edge_from not in node_id_set or edge_to not in node_id_set:
+                return False, "proof DAG 간선이 존재하지 않는 노드를 참조함"
+        for node in node_payloads:
+            dependencies = node.get("dependencies", [])
+            if not isinstance(dependencies, list):
+                return False, "proof DAG dependency 형식 오류"
+            for dependency in dependencies:
+                if dependency not in node_id_set:
+                    return False, "proof DAG dependency가 존재하지 않는 노드를 참조함"
+                if (dependency, node["node_id"]) not in edge_pairs:
+                    return False, "proof DAG dependency와 edge 정보가 일치하지 않음"
         if not _is_dag(node_ids, edge_pairs):
             return False, "proof DAG 순환 감지"
         if not _has_path(root_node, target_node, edge_pairs):
@@ -118,7 +134,11 @@ class GatePolicy:
             value = submission_dict.get(key)
             if not value:
                 return False, f"Release Gate 실패: {key} 누락"
-            if not (self.root / value).exists():
+            try:
+                resolved = resolve_under_root(self.root, str(value))
+            except ValueError:
+                return False, f"Release Gate 실패: {key} 경로가 프로젝트 범위를 벗어남"
+            if not resolved.exists():
                 return False, f"Release Gate 실패: {value} 파일 누락"
         release_policy = self._release_policy()
         if not bool(release_policy.get("allow_demo_release", False)) and bool(

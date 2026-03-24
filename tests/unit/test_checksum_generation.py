@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -24,6 +25,8 @@ def test_checksum_file_created(tmp_path):
     appendix = project_root / "papers" / "shared" / "prob_checksum_appendix.md"
     pdf = project_root / "papers" / "builds" / "prob_checksum.pdf"
     manifest_file = project_root / "papers" / "builds" / "prob_checksum_paper_manifest.json"
+    incident_summary = project_root / "data" / "audit_logs" / "last_incident_summary.json"
+    doctor_summary = project_root / "data" / "audit_logs" / "last_doctor_report.json"
 
     for path, content in [
         (ko, "ko"),
@@ -32,6 +35,38 @@ def test_checksum_file_created(tmp_path):
         (appendix, "appendix"),
         (pdf, "pdf"),
         (manifest_file, "{}"),
+        (
+            incident_summary,
+            json.dumps(
+                {
+                    "blocked_count": 2,
+                    "failure_class_summary": {"transient": 1},
+                    "policy_context": {
+                        "transient_failure_lookback_days": 7,
+                        "default_transient_failure_escalation_threshold": 3,
+                        "stage_transient_failure_thresholds": {"Normalize": 3},
+                    },
+                },
+                ensure_ascii=False,
+            ),
+        ),
+        (
+            doctor_summary,
+            json.dumps(
+                {
+                    "strict_passed": False,
+                    "policy_lint_summary": {"failed_policy_checks": 2},
+                    "checks": [
+                        {
+                            "name": "릴리즈 안전 정책",
+                            "category": "policy",
+                            "passed": False,
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+            ),
+        ),
     ]:
         path.parent.mkdir(parents=True, exist_ok=True)
         mode = "wb" if path.suffix == ".pdf" else "w"
@@ -87,3 +122,5 @@ def test_checksum_file_created(tmp_path):
     assert len(lines) >= 2
     assert submission.verification_summary["warning_count"] == 1
     assert submission.artifact_summary["formalization_artifact_kind"] == "skeleton_only"
+    assert submission.incident_summary["blocked_count"] == 2
+    assert submission.doctor_summary["policy_lint_summary"]["failed_policy_checks"] == 2

@@ -39,6 +39,7 @@ def assert_paper_manifest_schema(payload: dict[str, object]) -> None:
         "pdf_build_attempted",
         "pdf_build_success",
         "pdf_artifact_kind",
+        "incident_summary",
     ]:
         assert key in payload
 

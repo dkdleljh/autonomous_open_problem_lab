@@ -49,6 +49,8 @@ python3 -m venv .venv
 ```
 
 `doctor --strict`는 활성 프로필에서 요구하는 핵심 항목이 전부 충족되지 않으면 종료 코드 1로 실패한다. 이 경로는 로컬 자동 업데이트, GitHub CI, GitHub Release 워크플로우에서 실제로 사용된다.
+또한 `doctor`는 무인 재시도 정책, 릴리즈 안전 정책, transient 승격 정책을 lint해서 위험한 완화 조합을 별도 `policy` 체크로 노출한다.
+최근 doctor 결과는 `data/audit_logs/last_doctor_report.json`으로 저장되고, 이후 릴리즈 노트와 submission manifest가 이를 재사용한다.
 
 ## 4. CLI 명령 요약
 
@@ -137,12 +139,14 @@ python3 -m venv .venv
 ### 7.2 Release
 
 - 파일: `.github/workflows/release.yml`
-- 역할: doctor strict, pytest, 샘플 파이프라인, 릴리즈 노트 생성, GitHub Release 자산 업로드
+- 역할: doctor strict, pytest, 샘플 파이프라인, 운영 위험 평가 포함 릴리즈 노트 생성, GitHub Release 자산 업로드
+- 기본 정책: 운영 위험이 있으면 실패하고, 수동 `workflow_dispatch`에서만 override 허용
 
 ### 7.3 로컬 자동화 스크립트
 
 - `scripts/release/create_release.py`: 테스트, doctor, 버전 증가, 태그 생성, 릴리즈 준비
 - `scripts/release/auto_update.py`: doctor, 테스트, 샘플 실행, 커밋, 선택적 push 및 태그 릴리즈
+- `scripts/release/release_common.py`: 릴리즈 스크립트 공용 운영 위험 판정 및 audit log 헬퍼
 
 ## 8. 출력물 위치
 
@@ -157,6 +161,13 @@ python3 -m venv .venv
 - `papers/ko/`, `papers/en/`: 논문 초안
 - `papers/builds/`: PDF와 paper manifest
 - `data/paper_assets/releases/`: zip, tar.gz, checksums, release note
+
+특히 운영 판단에 직접 쓰이는 대표 파일은 다음과 같다.
+
+- `data/audit_logs/last_doctor_report.json`: 최근 doctor strict와 정책 lint 결과
+- `data/audit_logs/last_incident_summary.json`: 최근 blocked, failure class, policy context
+- `data/audit_logs/last_run_summary.json`: 최근 전체 실행 요약
+- `data/paper_assets/releases/release_notes_generated.md`: 운영 위험 요약이 포함된 GitHub 릴리즈 본문
 
 각 디렉터리별 세부 의미는 해당 경로의 `README.md`를 참고한다.
 
@@ -181,5 +192,6 @@ python3 -m venv .venv
 - GitHub `ci` 워크플로우
 - GitHub `release` 워크플로우
 - 태그 릴리즈와 자산 업로드
+- 운영 위험 감지 시 릴리즈 기본 차단, 수동 override 경로 제공
 
 최신 변경 이력은 [CHANGELOG.md](./CHANGELOG.md)에서 관리한다.

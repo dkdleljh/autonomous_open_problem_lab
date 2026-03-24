@@ -38,10 +38,21 @@
 ## 4. 자동 복구 규칙
 
 - 비중대 오류는 최대 2회 재시도
+- 재시도 간 대기 시간은 `configs/global/queue.yaml`의 `retry_policy.backoff_seconds`
+- `transient` 실패만 재시도
+- `permanent` 실패는 재시도 없이 즉시 BLOCKED
 - 재시도 실패 시 BLOCKED
 - 다음 실행 주기에 동일 문제를 재평가
 
-## 5. 제한적 수동 개입 절차
+## 5. 장애 확인 파일
+
+- `data/audit_logs/pipeline_audit.jsonl`: 단계별 이벤트와 retry 이벤트
+- `data/audit_logs/last_doctor_report.json`: 최근 doctor strict 결과와 정책 lint 스냅샷
+- `data/audit_logs/last_run_summary.json`: 최근 실행 전체 요약
+- `data/audit_logs/last_incident_summary.json`: failure class 요약과 주요 차단 사유
+- `aopl doctor --strict`: 운영 필수 체크와 정책 lint 결과
+
+## 6. 제한적 수동 개입 절차
 
 수동 개입은 아래 경우에만 허용한다.
 
@@ -52,5 +63,6 @@
 수동 개입 후에는 반드시 다음 절차를 다시 수행한다.
 
 1. `pytest -q`
-2. `aopl run-all --limit 1`
-3. 감사 로그 확인
+2. `aopl doctor --root . --profile local --strict`
+3. `aopl run-all --limit 1`
+4. 감사 로그 확인

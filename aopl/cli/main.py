@@ -17,7 +17,7 @@ from aopl.apps.scorer import Scorer
 from aopl.apps.submission_builder import SubmissionBuilder
 from aopl.apps.verifier import Verifier
 from aopl.core.config_store import ConfigStore
-from aopl.core.io_utils import read_json
+from aopl.core.io_utils import read_json, write_json
 from aopl.core.paths import detect_project_root, locate_workspace_root
 from aopl.core.schema_utils import validate_schema
 from aopl.core.types import (
@@ -259,7 +259,8 @@ def _detect_github_repository(root: Path) -> str:
 
 def _command_doctor(args: argparse.Namespace) -> None:
     root = _root_from_args(args)
-    quality_policy = ConfigStore(root).quality_policy().get("doctor", {})
+    config_store = ConfigStore(root)
+    quality_policy = config_store.quality_policy().get("doctor", {})
     profiles = quality_policy.get("profiles", {}) if isinstance(quality_policy, dict) else {}
     configured_default_profile = (
         quality_policy.get("default_profile", "local")
@@ -399,6 +400,114 @@ def _command_doctor(args: argparse.Namespace) -> None:
         "release",
     )
 
+    incident_summary_path = root / "data" / "audit_logs" / "last_incident_summary.json"
+    incident_summary = read_json(incident_summary_path, default=None)
+    if not isinstance(incident_summary, dict):
+        incident_summary = None
+    runtime_policy_summary = None
+    runtime_config = config_store.runtime()
+    queue_config = config_store.queue()
+    if isinstance(runtime_config, dict):
+        runtime_policy_summary = {
+            "max_retry_per_stage": runtime_config.get("max_retry_per_stage"),
+            "retry_backoff_seconds": (
+                queue_config.get("retry_policy", {}).get("backoff_seconds")
+                if isinstance(queue_config, dict)
+                else None
+            ),
+            "transient_failure_lookback_days": runtime_config.get(
+                "transient_failure_lookback_days"
+            ),
+            "default_transient_failure_escalation_threshold": runtime_config.get(
+                "transient_failure_escalation_threshold"
+            ),
+            "stage_transient_failure_thresholds": runtime_config.get(
+                "transient_failure_stage_thresholds", {}
+            ),
+        }
+        scheduling = queue_config.get("scheduling", {}) if isinstance(queue_config, dict) else {}
+        retry_policy = queue_config.get("retry_policy", {}) if isinstance(queue_config, dict) else {}
+        release_policy = runtime_config.get("release", {})
+        unattended = bool(scheduling.get("unattended", False)) if isinstance(scheduling, dict) else False
+        max_retry_per_stage = runtime_config.get("max_retry_per_stage", 0)
+        backoff_seconds = retry_policy.get("backoff_seconds", 0) if isinstance(retry_policy, dict) else 0
+        release_safe = (
+            isinstance(release_policy, dict)
+            and release_policy.get("allow_demo_release", False) is False
+            and release_policy.get("require_formal_build_success", False) is True
+            and release_policy.get("require_pdf_build_success", False) is True
+            and release_policy.get("require_verification_pass", False) is True
+        )
+        add_check(
+            "무인 재시도 정책",
+            (not unattended) or (isinstance(max_retry_per_stage, int) and max_retry_per_stage >= 1 and isinstance(backoff_seconds, int) and backoff_seconds > 0),
+            (
+                "unattended=false"
+                if not unattended
+                else f"max_retry_per_stage={max_retry_per_stage}, backoff_seconds={backoff_seconds}"
+            ),
+            "policy",
+            weight=2,
+        )
+        add_check(
+            "릴리즈 안전 정책",
+            release_safe,
+            (
+                "demo release 차단, formal/pdf/verification 강제"
+                if release_safe
+                else (
+                    "allow_demo_release="
+                    f"{release_policy.get('allow_demo_release')}, "
+                    "require_formal_build_success="
+                    f"{release_policy.get('require_formal_build_success')}, "
+                    "require_pdf_build_success="
+                    f"{release_policy.get('require_pdf_build_success')}, "
+                    "require_verification_pass="
+                    f"{release_policy.get('require_verification_pass')}"
+                )
+            ),
+            "policy",
+            weight=3,
+        )
+        stage_thresholds = runtime_config.get("transient_failure_stage_thresholds", {})
+        default_threshold = runtime_config.get("transient_failure_escalation_threshold", 3)
+        lookback_days = runtime_config.get("transient_failure_lookback_days", 7)
+        proof_threshold = (
+            stage_thresholds.get("Proof", default_threshold)
+            if isinstance(stage_thresholds, dict)
+            else default_threshold
+        )
+        formalization_threshold = (
+            stage_thresholds.get("Formalization", default_threshold)
+            if isinstance(stage_thresholds, dict)
+            else default_threshold
+        )
+        escalation_safe = (
+            isinstance(default_threshold, int)
+            and default_threshold >= 2
+            and isinstance(lookback_days, int)
+            and lookback_days >= 3
+            and isinstance(proof_threshold, int)
+            and proof_threshold <= default_threshold
+            and isinstance(formalization_threshold, int)
+            and formalization_threshold <= default_threshold
+        )
+        add_check(
+            "Transient 승격 정책",
+            escalation_safe,
+            (
+                "lookback/threshold policy configured"
+                if escalation_safe
+                else (
+                    f"lookback_days={lookback_days}, "
+                    f"default_threshold={default_threshold}, "
+                    f"Proof={proof_threshold}, Formalization={formalization_threshold}"
+                )
+            ),
+            "policy",
+            weight=2,
+        )
+
     total_weight = sum(item["weight"] for item in checks)
     earned_weight = sum(item["weight"] for item in checks if item["passed"])
     overall_score = round((earned_weight / total_weight) * 100, 1) if total_weight else 0.0
@@ -455,11 +564,20 @@ def _command_doctor(args: argparse.Namespace) -> None:
         "category_summary": by_category,
         "blocking_checks": blocking_checks,
         "checks": checks,
+        "incident_summary": incident_summary,
+        "runtime_policy_summary": runtime_policy_summary,
+        "policy_lint_summary": {
+            "total_policy_checks": sum(1 for item in checks if item["category"] == "policy"),
+            "failed_policy_checks": sum(
+                1 for item in checks if item["category"] == "policy" and not item["passed"]
+            ),
+        },
         "interpretation": {
             "100점 의미": "활성 프로필에서 요구하는 핵심 운영 조건을 전부 충족한 상태",
             "주의": "이 점수는 운영 준비도 점수이며, 모든 수학 난제 해결 능력 점수가 아니다",
         },
     }
+    write_json(root / "data" / "audit_logs" / "last_doctor_report.json", payload)
     _print_json(payload)
     if args.strict and not strict_passed:
         raise SystemExit(1)

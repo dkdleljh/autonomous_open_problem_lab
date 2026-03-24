@@ -60,5 +60,7 @@ jobs:
         with:
           name: ci-audit-summary
           path: |
+            data/audit_logs/last_doctor_report.json
             data/audit_logs/last_run_summary.json
+            data/audit_logs/last_incident_summary.json
             data/audit_logs/pipeline_audit.jsonl

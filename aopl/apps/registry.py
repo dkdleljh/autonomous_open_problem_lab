@@ -146,13 +146,17 @@ class Registry:
     def update_status(self, problem_id: str, stage: PipelineStage, reason: str) -> None:
         payload = self._load_registry()
         old_stage = None
+        found = False
         for item in payload:
             if item.get("problem_id") == problem_id:
+                found = True
                 old_stage = item.get("status")
                 if old_stage == stage.value:
                     return
                 item["status"] = stage.value
                 break
+        if not found:
+            raise ValueError(f"상태를 갱신할 problem_id를 찾을 수 없습니다: {problem_id}")
         write_json(self.registry_file, payload)
 
         history = self._load_history()

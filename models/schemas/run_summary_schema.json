@@ -138,7 +138,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["problem_id", "reason"],
+        "required": ["problem_id", "reason", "stage", "failure_class", "retry_count"],
         "properties": {
           "problem_id": {
             "type": "string",
@@ -146,6 +146,17 @@
           },
           "reason": {
             "type": "string"
+          },
+          "stage": {
+            "type": "string"
+          },
+          "failure_class": {
+            "type": "string",
+            "enum": ["transient", "permanent", "unknown"]
+          },
+          "retry_count": {
+            "type": "integer",
+            "minimum": 0
           }
         },
         "additionalProperties": false

@@ -183,6 +183,7 @@ class PaperManifest:
     pdf_build_attempted: bool
     pdf_build_success: bool
     pdf_artifact_kind: str
+    incident_summary: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -199,6 +200,8 @@ class SubmissionManifest:
     backend_summary: dict[str, str]
     artifact_summary: dict[str, Any]
     verification_summary: dict[str, Any]
+    incident_summary: dict[str, Any] = field(default_factory=dict)
+    doctor_summary: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

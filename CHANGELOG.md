@@ -42,3 +42,11 @@
 - schema enforcement 확대
 - doctor strict 정책 도입
 - GitHub CI / Release 자동화 강화
+
+## 최근 운영 안정성 강화
+
+- 경로 탈출, 심볼릭 링크 우회, LaTeX/Lean 문자열 주입, 외부 툴 무기한 대기 문제를 차단하는 보강 적용
+- 런타임 예외를 문제 단위로 격리하고 retry/backoff, transient/permanent 분류, lookback 기반 승격 정책 도입
+- `last_incident_summary.json`, `last_doctor_report.json`을 표준 운영 산출물로 추가하고 `doctor`, release note, submission manifest, CI artifact, GitHub release asset이 이를 공통 소비
+- GitHub Release 워크플로우와 로컬 `create_release.py`가 운영 위험 감지 시 기본 차단하고, 수동 override에서만 완화되도록 통일
+- `auto_update.py`, `create_release.py`, `generate_release_notes.py`의 공통 운영 위험 판정 로직을 `scripts/release/release_common.py`로 정리

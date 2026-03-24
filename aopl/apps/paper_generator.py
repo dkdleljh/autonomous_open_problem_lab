@@ -6,7 +6,15 @@ from pathlib import Path
 from typing import Any
 
 from aopl.core.config_store import ConfigStore
-from aopl.core.io_utils import ensure_dir, read_text, write_json, write_text
+from aopl.core.io_utils import (
+    ensure_dir,
+    escape_latex_text,
+    read_json,
+    read_text,
+    resolve_under_root,
+    write_json,
+    write_text,
+)
 from aopl.core.schema_utils import validate_schema
 from aopl.core.types import (
     FormalizationReport,
@@ -51,6 +59,10 @@ class PaperGenerator:
         self.section_rules_file = root / "configs" / "paper" / "section_rules.yaml"
         self.journal_style_file = root / "configs" / "paper" / "journal_style.yaml"
 
+    def _incident_summary(self) -> dict[str, Any]:
+        payload = read_json(self.root / "data" / "audit_logs" / "last_incident_summary.json", default={})
+        return payload if isinstance(payload, dict) else {}
+
     def _semantic_graph(self, problem: NormalizedProblem, dag: ProofDAG) -> dict[str, Any]:
         theorem_numbers = ["정리 1", "보조정리 1", "보조정리 2"]
         equation_numbers = ["(1)", "(2)"]
@@ -71,6 +83,15 @@ class PaperGenerator:
         config = self.config_store.paper_section_rules()
         return config if isinstance(config, dict) else {}
 
+    def _latex_timeout_seconds(self) -> int:
+        runtime = self.config_store.runtime()
+        resource_budget = runtime.get("resource_budget", {}) if isinstance(runtime, dict) else {}
+        if isinstance(resource_budget, dict):
+            value = resource_budget.get("latex_timeout_seconds", 120)
+            if isinstance(value, int) and value > 0:
+                return value
+        return 120
+
     def _latex_preamble(self, title: str) -> str:
         journal = self._journal_config()
         latex = journal.get("latex", {}) if isinstance(journal, dict) else {}
@@ -86,7 +107,7 @@ class PaperGenerator:
         return (
             f"\\documentclass[{font_size}]{{{documentclass}}}\n"
             + "\\usepackage{" + ",".join(packages) + "}\n"
-            + "\\title{" + title + "}\n"
+            + "\\title{" + escape_latex_text(title) + "}\n"
             + "\\author{Autonomous Open Problem Lab}\n"
             + "\\date{\\today}\n"
         )
@@ -125,8 +146,10 @@ class PaperGenerator:
         for index, source in enumerate(problem.source_problem.get("sources", []), start=1):
             key = f"ref{index}"
             refs.append(key)
-            title = source.get("name", f"source_{index}")
-            url = source.get("url", "https://example.org")
+            title = escape_latex_text(str(source.get("name", f"source_{index}")))
+            url = str(source.get("url", "https://example.org")).replace("}", "%7D").replace(
+                "{", "%7B"
+            )
             bib_lines.append(
                 "@misc{"
                 + key
@@ -156,6 +179,9 @@ class PaperGenerator:
         bib_file: str,
     ) -> str:
         explored_bound, seed, checked_variant = self._counterexample_context(verification)
+        safe_problem_id = escape_latex_text(problem.problem_id)
+        safe_target = escape_latex_text(problem.target)
+        theorem_numbers = [escape_latex_text(str(item)) for item in semantic_graph["theorem_numbers"]]
         return (
             self._latex_preamble("자동 탐색 기반 난제 연구 초안: " + problem.title)
             + "\\begin{document}\n"
@@ -165,12 +191,12 @@ class PaperGenerator:
             "자동 검증, 자동 논문화 파이프라인의 결과를 제시한다. "
             "계산 결과는 실험적 지지로만 사용한다.\\\n"
             "\\section{배경}\n"
-            "문제 식별자: " + problem.problem_id + "\\\n"
+            "문제 식별자: " + safe_problem_id + "\\\n"
             "\\section{관련 연구}\n"
             "등록된 참고문헌을 기반으로 연관 연구를 구성한다.\\\n"
             "\\section{정의와 표기}\n"
-            "정의 번호 동기화: " + ", ".join(semantic_graph["theorem_numbers"]) + "\\\n"
-            "\\section{핵심 아이디어}\n" + problem.target + "\\\n"
+            "정의 번호 동기화: " + ", ".join(theorem_numbers) + "\\\n"
+            "\\section{핵심 아이디어}\n" + safe_target + "\\\n"
             "\\section{보조정리}\n"
             "보조정리 1과 보조정리 2를 통해 주정리 후보를 지원한다.\\\n"
             "\\section{주정리}\n"
@@ -205,6 +231,9 @@ class PaperGenerator:
         bib_file: str,
     ) -> str:
         explored_bound, seed, checked_variant = self._counterexample_context(verification)
+        safe_problem_id = escape_latex_text(problem.problem_id)
+        safe_target = escape_latex_text(problem.target)
+        theorem_numbers = [escape_latex_text(str(item)) for item in semantic_graph["theorem_numbers"]]
         return (
             self._latex_preamble("Automated Open Problem Workflow Draft: " + problem.title)
             + "\\begin{document}\n"
@@ -214,14 +243,14 @@ class PaperGenerator:
             "normalization, counterexample search, verification, and paper drafting. "
             "Computational evidence is treated as experimental support only.\\\n"
             "\\section{Background}\n"
-            "Problem identifier: " + problem.problem_id + "\\\n"
+            "Problem identifier: " + safe_problem_id + "\\\n"
             "\\section{Related Work}\n"
             "The citation graph is generated from registered references.\\\n"
             "\\section{Definitions and Notation}\n"
             "Synchronized theorem numbering: "
-            + ", ".join(semantic_graph["theorem_numbers"])
+            + ", ".join(theorem_numbers)
             + "\\\n"
-            "\\section{Core Idea}\n" + problem.target + "\\\n"
+            "\\section{Core Idea}\n" + safe_target + "\\\n"
             "\\section{Lemmas}\n"
             "Lemma entries are aligned with proof DAG nodes.\\\n"
             "\\section{Main Theorem}\n"
@@ -270,15 +299,24 @@ class PaperGenerator:
                 f"-output-directory={self.build_dir}",
                 str(tex_path),
             ]
-        run = subprocess.run(
-            command,
-            cwd=self.root,
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
+        try:
+            run = subprocess.run(
+                command,
+                cwd=self.root,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=self._latex_timeout_seconds(),
+            )
+        except subprocess.TimeoutExpired:
+            log_path = self.build_log_dir / f"{tex_path.stem}_latex.log"
+            write_text(
+                log_path,
+                f"LaTeX 빌드 시간이 {self._latex_timeout_seconds()}초를 초과하여 중단되었습니다.\n",
+            )
+            return True, False
         log_path = self.build_log_dir / f"{tex_path.stem}_latex.log"
         write_text(log_path, (run.stdout or "") + "\n" + (run.stderr or ""))
         return True, run.returncode == 0
@@ -310,6 +348,8 @@ class PaperGenerator:
             f"- 형식화 빌드 시도: {formal_report.build_attempted}\n"
             f"- 형식화 빌드 성공: {formal_report.build_success}\n"
             f"- 미해결 의무: {len(formal_report.obligations_unresolved)}\n"
+            f"- 최근 blocked 수: {self._incident_summary().get('blocked_count', 0)}\n"
+            f"- 최근 failure class 요약: {self._incident_summary().get('failure_class_summary', {})}\n"
         )
         write_text(appendix_path, appendix)
 
@@ -343,14 +383,15 @@ class PaperGenerator:
             pdf_build_attempted=pdf_build_attempted,
             pdf_build_success=pdf_build_success,
             pdf_artifact_kind="latex_build" if pdf_build_success else "placeholder_pdf",
+            incident_summary=self._incident_summary(),
         )
         validate_schema(self.root, "paper_manifest_schema", manifest.to_dict())
         write_json(self.build_dir / f"{problem.problem_id}_paper_manifest.json", manifest.to_dict())
         return manifest
 
     def qa_check(self, manifest: PaperManifest) -> tuple[bool, str]:
-        ko_text = read_text(self.root / manifest.ko_tex)
-        en_text = read_text(self.root / manifest.en_tex)
+        ko_text = read_text(resolve_under_root(self.root, manifest.ko_tex))
+        en_text = read_text(resolve_under_root(self.root, manifest.en_tex))
         rules = self._section_rules()
         forbidden = rules.get("forbidden_expressions", []) if isinstance(rules, dict) else []
         checks = rules.get("checks", {}) if isinstance(rules, dict) else {}
@@ -361,7 +402,7 @@ class PaperGenerator:
             return False, "영어 논문에 주정리 번호 누락"
         if not manifest.reference_keys:
             return False, "참고문헌 키가 비어 있음"
-        appendix_path = self.root / manifest.appendix_file
+        appendix_path = resolve_under_root(self.root, manifest.appendix_file)
         if not appendix_path.exists():
             return False, "재현성 부록 파일 누락"
         appendix_text = read_text(appendix_path)

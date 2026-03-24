@@ -13,6 +13,10 @@ on:
         description: "릴리즈 태그"
         required: false
         default: "v0.1.0"
+      allow_operational_risk:
+        description: "운영 위험이 있어도 릴리즈 노트 생성 단계를 계속 진행"
+        required: false
+        default: "false"
 
 permissions:
   contents: write
@@ -67,7 +71,11 @@ jobs:
         run: |
           TAG_NAME=${GITHUB_REF_NAME}
           if [ -z "$TAG_NAME" ]; then TAG_NAME=${{ inputs.tag }}; fi
-          python scripts/release/generate_release_notes.py --tag "$TAG_NAME" --output data/paper_assets/releases/release_notes_generated.md
+          ALLOW_RISK_FLAG=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.allow_operational_risk }}" = "true" ]; then
+            ALLOW_RISK_FLAG="--allow-risk-override"
+          fi
+          python scripts/release/generate_release_notes.py --tag "$TAG_NAME" --output data/paper_assets/releases/release_notes_generated.md --fail-on-risk $ALLOW_RISK_FLAG
 
       - name: 릴리즈 자산 업로드
         env:
@@ -80,6 +88,9 @@ jobs:
             data/paper_assets/releases/*.zip \
             data/paper_assets/releases/*.tar.gz \
             data/paper_assets/releases/*checksums.txt \
+            data/audit_logs/last_doctor_report.json \
+            data/audit_logs/last_run_summary.json \
+            data/audit_logs/last_incident_summary.json \
             papers/builds/*.pdf \
             papers/builds/*paper_manifest.json \
             --repo "${{ github.repository }}" \

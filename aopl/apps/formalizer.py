@@ -6,7 +6,13 @@ import subprocess
 from pathlib import Path
 
 from aopl.core.config_store import ConfigStore
-from aopl.core.io_utils import ensure_dir, write_json, write_text
+from aopl.core.io_utils import (
+    ensure_dir,
+    escape_lean_comment,
+    escape_lean_string,
+    write_json,
+    write_text,
+)
 from aopl.core.schema_utils import validate_schema
 from aopl.core.types import FormalizationReport, NormalizedProblem, ProofDAG
 
@@ -38,6 +44,15 @@ class Formalizer:
         try_build = build.get("try_build", True)
         return bool(try_build)
 
+    def _build_timeout_seconds(self) -> int:
+        runtime = self.config_store.runtime()
+        resource_budget = runtime.get("resource_budget", {}) if isinstance(runtime, dict) else {}
+        if isinstance(resource_budget, dict):
+            value = resource_budget.get("lean_timeout_seconds", 120)
+            if isinstance(value, int) and value > 0:
+                return value
+        return 120
+
     def _lean_safe_name(self, value: str) -> str:
         safe = re.sub(r"[^0-9A-Za-z_]", "_", value)
         safe = re.sub(r"_+", "_", safe).strip("_")
@@ -62,13 +77,15 @@ class Formalizer:
         lines.append("")
         lines.append("namespace AutonomousOpenProblemLab")
         lines.append("")
-        lines.append(f'def problemId : String := "{problem.problem_id}"')
+        lines.append(f'def problemId : String := "{escape_lean_string(problem.problem_id)}"')
         lines.append("")
         for node in dag.nodes:
             if node.node_type == "definition":
-                lines.append(f'def {node.node_id}_desc : String := "{node.title}"')
+                lines.append(
+                    f'def {node.node_id}_desc : String := "{escape_lean_string(node.title)}"'
+                )
         lines.append("")
-        lines.append(f"theorem {problem.problem_id}_main : True := by")
+        lines.append(f"theorem {self._lean_safe_name(problem.problem_id)}_main : True := by")
         lines.append("  trivial")
         lines.append("")
         lines.append("end AutonomousOpenProblemLab")
@@ -89,13 +106,21 @@ class Formalizer:
             if shutil.which("lean")
             else ["lake", "env", "lean", str(lean_file)]
         )
-        run = subprocess.run(
-            command,
-            cwd=self.root,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
+        try:
+            run = subprocess.run(
+                command,
+                cwd=self.root,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=self._build_timeout_seconds(),
+            )
+        except subprocess.TimeoutExpired:
+            write_text(
+                log_file,
+                f"Lean 빌드 시간이 {self._build_timeout_seconds()}초를 초과하여 중단되었습니다.\n",
+            )
+            return True, False
         output = (run.stdout or "") + "\n" + (run.stderr or "")
         write_text(log_file, output)
         return True, run.returncode == 0
@@ -188,19 +213,21 @@ class RealFormalizer(Formalizer):
         lines.append("")
         lines.append("namespace AutonomousOpenProblemLab")
         lines.append("")
-        lines.append(f"/- Problem: {problem.problem_id} -/")
-        lines.append(f'def problemId : String := "{problem.problem_id}"')
+        lines.append(f"/- Problem: {escape_lean_comment(problem.problem_id)} -/")
+        lines.append(f'def problemId : String := "{escape_lean_string(problem.problem_id)}"')
         lines.append("")
         for node in dag.nodes:
             if node.node_type == "definition":
-                lines.append(f"/- {node.title}: {node.statement} -/")
+                title = escape_lean_comment(node.title)
+                statement = escape_lean_comment(node.statement)
+                lines.append(f"/- {title}: {statement} -/")
         lines.append("")
         lemma_names: list[str] = []
         for node in dag.nodes:
             if node.node_type == "lemma":
                 theorem_name = self._lean_safe_name(f"{problem_name}_{node.node_id}")
                 lemma_names.append(theorem_name)
-                lines.append(f"/- obligation: {node.title} -/")
+                lines.append(f"/- obligation: {escape_lean_comment(node.title)} -/")
                 lines.append(f"theorem {theorem_name} : True := by")
                 lines.append("  trivial")
                 lines.append("")

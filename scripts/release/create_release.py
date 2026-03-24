@@ -4,7 +4,14 @@ import argparse
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from release_common import load_incident_summary, summarize_doctor_failure
 
 
 def run(command: list[str], cwd: Path) -> str:
@@ -13,6 +20,10 @@ def run(command: list[str], cwd: Path) -> str:
         stderr = result.stderr.strip()
         stdout = result.stdout.strip()
         detail = stderr or stdout or "실행 실패"
+        if command[:4] == [command[0], "-m", "aopl", "doctor"]:
+            doctor_summary = summarize_doctor_failure(stdout)
+            if doctor_summary:
+                detail = f"{detail}\n{doctor_summary}"
         raise RuntimeError(f"명령 실패: {' '.join(command)}\n{detail}")
     return result.stdout.strip()
 
@@ -20,8 +31,6 @@ def run(command: list[str], cwd: Path) -> str:
 def run_optional(command: list[str], cwd: Path) -> tuple[int, str, str]:
     result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False)
     return result.returncode, result.stdout.strip(), result.stderr.strip()
-
-
 def detect_github_token(repo: Path) -> str:
     token = os.environ.get("GITHUB_TOKEN", "").strip()
     if token:
@@ -70,33 +79,30 @@ def latest_tag(repo: Path) -> str:
     return tags[-1] if tags else "v0.0.0"
 
 
-def build_release_notes(repo: Path, new_tag: str) -> str:
-    previous = latest_tag(repo)
-    if previous == "v0.0.0":
-        log = run(["git", "log", "--oneline"], repo)
-    else:
-        log = run(["git", "log", "--oneline", f"{previous}..HEAD"], repo)
-    lines = [line for line in log.splitlines() if line.strip()]
-    if not lines:
-        lines = ["- 변경 내역 없음"]
-    else:
-        lines = [f"- {line}" for line in lines]
-    notes = [
-        f"# 릴리즈 {new_tag}",
-        "",
-        "## 개요",
-        "- 완전 무인 자동 수학 난제 탐색 파이프라인 버전 릴리즈",
-        "- 품질 게이트와 재현성 아티팩트를 포함",
-        "",
-        "## 커밋 내역",
-        *lines,
-    ]
-    return "\n".join(notes) + "\n"
-
-
 def ensure_repo(repo: Path) -> None:
     if not (repo / ".git").exists():
         raise RuntimeError("Git 저장소가 초기화되지 않았습니다.")
+def ensure_release_incident_policy(repo: Path, *, allow_transient_only: bool) -> None:
+    summary = load_incident_summary(repo)
+    if not summary:
+        return
+    blocked_count = int(summary.get("blocked_count", 0))
+    if blocked_count <= 0:
+        return
+    failure_class_summary = summary.get("failure_class_summary", {})
+    transient_count = 0
+    permanent_count = 0
+    if isinstance(failure_class_summary, dict):
+        transient_count = int(failure_class_summary.get("transient", 0))
+        permanent_count = int(failure_class_summary.get("permanent", 0))
+    if permanent_count > 0:
+        raise RuntimeError("incident summary 에 permanent 실패가 있어 릴리즈를 중단합니다.")
+    if blocked_count > 0 and not allow_transient_only:
+        raise RuntimeError("incident summary 에 blocked 문제가 있어 릴리즈를 중단합니다.")
+    print(
+        "incident summary 확인: "
+        f"blocked_count={blocked_count}, transient_count={transient_count}, permanent_count={permanent_count}"
+    )
 
 
 def verify_before_release(repo: Path, python_exec: str) -> None:
@@ -107,6 +113,29 @@ def verify_before_release(repo: Path, python_exec: str) -> None:
     )
     run([python_exec, "-m", "pytest", "-q"], repo)
     run([python_exec, "-m", "aopl", "run-all", "--limit", "1"], repo)
+    ensure_release_incident_policy(repo, allow_transient_only=False)
+
+
+def generate_release_notes(
+    repo: Path,
+    python_exec: str,
+    new_tag: str,
+    notes_file: Path,
+    *,
+    allow_operational_risk: bool,
+) -> None:
+    command = [
+        python_exec,
+        "scripts/release/generate_release_notes.py",
+        "--tag",
+        new_tag,
+        "--output",
+        str(notes_file.relative_to(repo)),
+        "--fail-on-risk",
+    ]
+    if allow_operational_risk:
+        command.append("--allow-risk-override")
+    run(command, repo)
 
 
 def push_release(repo: Path, new_tag: str, mode: str, notes_file: Path) -> None:
@@ -148,6 +177,7 @@ def main() -> None:
     parser.add_argument("--mode", choices=["local", "github"], default="local")
     parser.add_argument("--bump", choices=["patch", "minor", "major"], default="patch")
     parser.add_argument("--python", default="python3")
+    parser.add_argument("--allow-operational-risk", action="store_true")
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parents[2]
@@ -159,11 +189,16 @@ def main() -> None:
     next_ver = bump_version(current, args.bump)
     new_tag = f"v{next_ver[0]}.{next_ver[1]}.{next_ver[2]}"
 
-    notes_text = build_release_notes(repo, new_tag)
     release_dir = repo / "data" / "paper_assets" / "releases"
     release_dir.mkdir(parents=True, exist_ok=True)
     notes_file = release_dir / f"release_notes_{new_tag}.md"
-    notes_file.write_text(notes_text, encoding="utf-8")
+    generate_release_notes(
+        repo,
+        args.python,
+        new_tag,
+        notes_file,
+        allow_operational_risk=args.allow_operational_risk,
+    )
 
     run(["git", "add", "-A"], repo)
     code, out, err = run_optional(["git", "diff", "--cached", "--quiet"], repo)

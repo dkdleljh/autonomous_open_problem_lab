@@ -145,6 +145,7 @@ def test_cli_doctor_prints_readiness_report(tmp_path, capsys):
     project_root = prepare_project_root(tmp_path)
     _command_doctor(Namespace(root=str(project_root), profile=None, strict=False, min_score=None))
     payload = json.loads(capsys.readouterr().out)
+    doctor_report_file = project_root / "data" / "audit_logs" / "last_doctor_report.json"
 
     assert "doctor_score" in payload
     assert "checks" in payload
@@ -152,6 +153,46 @@ def test_cli_doctor_prints_readiness_report(tmp_path, capsys):
     assert any(item["name"] == "핵심 한글 문서" for item in payload["checks"])
     assert "active_profile_score" in payload
     assert "strict_passed" in payload
+    assert "incident_summary" in payload
+    assert "runtime_policy_summary" in payload
+    assert "policy_lint_summary" in payload
+    assert any(item["name"] == "릴리즈 안전 정책" for item in payload["checks"])
+    assert doctor_report_file.exists()
+    stored_payload = json.loads(doctor_report_file.read_text(encoding="utf-8"))
+    assert stored_payload["doctor_score"] == payload["doctor_score"]
+
+
+def test_cli_doctor_includes_last_incident_summary_when_present(tmp_path, capsys):
+    project_root = prepare_project_root(tmp_path)
+    incident_path = project_root / "data" / "audit_logs" / "last_incident_summary.json"
+    incident_path.parent.mkdir(parents=True, exist_ok=True)
+    incident_path.write_text(
+        json.dumps(
+            {
+                "generated_at": "2026-03-24T00:00:00+00:00",
+                "total_records": 1,
+                "processed_count": 0,
+                "blocked_count": 1,
+                "runtime_exception_count": 1,
+                "failure_class_summary": {"transient": 1},
+                "policy_context": {
+                    "transient_failure_lookback_days": 7,
+                    "default_transient_failure_escalation_threshold": 3,
+                    "stage_transient_failure_thresholds": {"Normalize": 3},
+                },
+                "top_block_reasons": [{"reason": "sample", "count": 1}],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    _command_doctor(Namespace(root=str(project_root), profile=None, strict=False, min_score=None))
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["incident_summary"]["blocked_count"] == 1
+    assert payload["incident_summary"]["failure_class_summary"]["transient"] == 1
+    assert payload["incident_summary"]["policy_context"]["transient_failure_lookback_days"] == 7
 
 
 def test_cli_doctor_strict_exits_when_policy_unmet(tmp_path, capsys):
@@ -166,6 +207,37 @@ def test_cli_doctor_strict_exits_when_policy_unmet(tmp_path, capsys):
     assert payload["active_profile"] == "local"
     assert payload["strict_passed"] is False
     assert payload["blocking_checks"]
+
+
+def test_cli_doctor_flags_risky_policy_configuration(tmp_path, capsys):
+    project_root = prepare_project_root(tmp_path)
+    runtime_file = project_root / "configs" / "global" / "runtime.yaml"
+    queue_file = project_root / "configs" / "global" / "queue.yaml"
+    runtime = read_yaml(runtime_file, default={})
+    queue = read_yaml(queue_file, default={})
+    runtime["release"] = {
+        "allow_demo_release": True,
+        "require_formal_build_success": False,
+        "require_pdf_build_success": False,
+        "require_verification_pass": False,
+    }
+    runtime["max_retry_per_stage"] = 0
+    runtime["transient_failure_lookback_days"] = 1
+    runtime["transient_failure_escalation_threshold"] = 1
+    runtime["transient_failure_stage_thresholds"] = {"Proof": 2, "Formalization": 2}
+    queue["scheduling"] = {"unattended": True}
+    queue["retry_policy"] = {"max_attempts": 1, "backoff_seconds": 0}
+    write_yaml(runtime_file, runtime)
+    write_yaml(queue_file, queue)
+
+    _command_doctor(Namespace(root=str(project_root), profile=None, strict=False, min_score=None))
+    payload = json.loads(capsys.readouterr().out)
+
+    checks = {item["name"]: item for item in payload["checks"]}
+    assert checks["무인 재시도 정책"]["passed"] is False
+    assert checks["릴리즈 안전 정책"]["passed"] is False
+    assert checks["Transient 승격 정책"]["passed"] is False
+    assert payload["policy_lint_summary"]["failed_policy_checks"] >= 3
 
 
 def test_cli_doctor_accepts_github_fallback_sources(tmp_path, capsys, monkeypatch):

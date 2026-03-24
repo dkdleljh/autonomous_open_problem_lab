@@ -106,4 +106,4 @@ submission_builder는 논문 및 부속 파일을 묶어 제출 패키지와 체
 
 ## 6. 감사 로그 흐름
 
-모든 게이트 판정은 `data/audit_logs/pipeline_audit.jsonl`에 저장되며 마지막 실행 요약은 `data/audit_logs/last_run_summary.json`으로 기록된다.
+모든 게이트 판정은 `data/audit_logs/pipeline_audit.jsonl`에 저장되며 마지막 실행 요약은 `data/audit_logs/last_run_summary.json`으로 기록된다. 차단 사유 집계와 failure class 요약은 `data/audit_logs/last_incident_summary.json`에 별도로 남는다. 최근 `doctor` 실행 결과와 정책 lint 스냅샷은 `data/audit_logs/last_doctor_report.json`에 저장되며, 이후 release note와 submission manifest가 이를 재사용한다.

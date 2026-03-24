@@ -46,9 +46,19 @@ def test_release_package_regression(tmp_path):
     assert "검증 중대 이슈 수:" in notes
     assert "검증 경고 수:" in notes
     assert "형식화 아티팩트 유형:" in notes
+    assert "최근 blocked 수:" in notes
+    assert "최근 failure class 요약:" in notes
+    assert "transient lookback days:" in notes
+    assert "default transient escalation threshold:" in notes
+    assert "stage transient thresholds:" in notes
+    assert "doctor strict 통과:" in notes
+    assert "doctor 정책 lint 실패 수:" in notes
+    assert "doctor 정책 lint 실패 항목:" in notes
     assert summary["stats"]["processed_count"] >= 1
     assert summary["stats"]["released_problem_ids"]
     assert "verification_summary" in item
     assert "provenance_summary" in item
     assert item["provenance_summary"]["harvest_batch_id"]
     assert item["provenance_summary"]["source_signature"]
+    assert "incident_summary" in item["submission_manifest"]
+    assert "doctor_summary" in item["submission_manifest"]

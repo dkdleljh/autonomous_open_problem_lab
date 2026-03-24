@@ -13,7 +13,9 @@
     "included_files",
     "backend_summary",
     "artifact_summary",
-    "verification_summary"
+    "verification_summary",
+    "incident_summary",
+    "doctor_summary"
   ],
   "properties": {
     "problem_id": {
@@ -129,6 +131,12 @@
         }
       },
       "additionalProperties": true
+    },
+    "incident_summary": {
+      "type": "object"
+    },
+    "doctor_summary": {
+      "type": "object"
     }
   }
 }
