@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-03-24T15:22:45.136296+00:00",
+  "total_records": 1,
+  "processed_count": 0,
+  "blocked_count": 1,
+  "runtime_exception_count": 0,
+  "failure_class_summary": {
+    "unknown": 1
+  },
+  "policy_context": {
+    "max_retry_per_stage": 2,
+    "retry_backoff_seconds": 30,
+    "transient_failure_lookback_days": 7,
+    "default_transient_failure_escalation_threshold": 3,
+    "stage_transient_failure_thresholds": {
+      "Normalize": 3,
+      "Proof": 2,
+      "Formalization": 2
+    }
+  },
+  "top_block_reasons": [
+    {
+      "reason": "Release Gate 실패: 형식화 빌드 성공 필요",
+      "count": 1
+    }
+  ]
+}

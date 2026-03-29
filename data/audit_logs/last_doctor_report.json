@@ -1,8 +1,8 @@
 {
-  "doctor_score": 95.8,
-  "active_profile_score": 94.4,
-  "active_profile": "local",
-  "strict_passed": false,
+  "doctor_score": 100.0,
+  "active_profile_score": 100.0,
+  "active_profile": "github_release",
+  "strict_passed": true,
   "policy": {
     "default_profile": "local",
     "required_checks": [
@@ -12,6 +12,9 @@
       "현재 브랜치",
       "워킹트리 청결",
       "pytest 사용 가능",
+      "GitHub CLI",
+      "GITHUB_TOKEN",
+      "GITHUB_REPOSITORY",
       "핵심 한글 문서",
       "GitHub 워크플로우"
     ],
@@ -19,10 +22,10 @@
   },
   "summary": {
     "total_checks": 17,
-    "passed_checks": 16,
-    "failed_checks": 1,
-    "profile_checks": 13,
-    "profile_failed_checks": 1
+    "passed_checks": 17,
+    "failed_checks": 0,
+    "profile_checks": 17,
+    "profile_failed_checks": 0
   },
   "category_summary": {
     "workspace": {
@@ -30,7 +33,7 @@
       "total": 1
     },
     "git": {
-      "passed": 3,
+      "passed": 4,
       "total": 4
     },
     "tooling": {
@@ -50,12 +53,7 @@
       "total": 3
     }
   },
-  "blocking_checks": [
-    {
-      "name": "워킹트리 청결",
-      "detail": "미커밋 변경 존재"
-    }
-  ],
+  "blocking_checks": [],
   "checks": [
     {
       "name": "프로젝트 루트",
@@ -107,8 +105,8 @@
     },
     {
       "name": "워킹트리 청결",
-      "passed": false,
-      "detail": "미커밋 변경 존재",
+      "passed": true,
+      "detail": "clean",
       "category": "git",
       "weight": 1,
       "profiles": [

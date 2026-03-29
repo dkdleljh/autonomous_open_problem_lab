@@ -92,6 +92,12 @@ INPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.
 INPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.aux
 INPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.aux
 OUTPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.aux
+INPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.out
+INPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.out
+INPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.out
+INPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.out
+INPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.out
+INPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.out
 OUTPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.out
 OUTPUT papers/builds/prob_그래프_최소_반례_기반_분해_가능성_후보.pdf
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmr17.tfm
