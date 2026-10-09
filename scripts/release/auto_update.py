@@ -9,7 +9,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from release_common import (
+from release_common import (  # noqa: E402
     doctor_report_hint,
     incident_summary_hint,
     load_incident_summary,

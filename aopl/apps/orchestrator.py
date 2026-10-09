@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 import json
-from pathlib import Path
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import asdict
+from pathlib import Path
+from typing import Any
 
 from aopl.apps.harvester import Harvester
 from aopl.apps.normalizer import Normalizer
@@ -341,7 +342,7 @@ class Orchestrator:
                 self.registry.update_status(record.problem_id, current_stage, harvest_reason)
 
                 normalized, normalize_attempts, _ = self._run_with_retry(
-                    lambda: self.normalizer.normalize(record),
+                    lambda record=record: self.normalizer.normalize(record),
                     record,
                     current_stage,
                     "Normalize",
@@ -367,7 +368,7 @@ class Orchestrator:
                 self.registry.update_status(record.problem_id, current_stage, normalize_reason)
 
                 score, score_attempts, _ = self._run_with_retry(
-                    lambda: self.scorer.score(normalized),
+                    lambda normalized=normalized: self.scorer.score(normalized),
                     record,
                     current_stage,
                     "Score",
@@ -392,7 +393,7 @@ class Orchestrator:
                 self.registry.update_status(record.problem_id, current_stage, score_reason)
 
                 counterexample_report, counterexample_attempts, _ = self._run_with_retry(
-                    lambda: self.counterexample_engine.run(normalized),
+                    lambda normalized=normalized: self.counterexample_engine.run(normalized),
                     record,
                     current_stage,
                     "Counterexample",
@@ -435,7 +436,7 @@ class Orchestrator:
                 self.registry.update_status(record.problem_id, current_stage, counterexample_reason)
 
                 dag, proof_attempts, _ = self._run_with_retry(
-                    lambda: self.proof_engine.build(normalized, counterexample_report),
+                    lambda counterexample_report=counterexample_report, normalized=normalized: self.proof_engine.build(normalized, counterexample_report),
                     record,
                     current_stage,
                     "Proof",
@@ -478,7 +479,7 @@ class Orchestrator:
                 self.registry.update_status(record.problem_id, current_stage, draft_reason)
 
                 verification, verification_attempts, _ = self._run_with_retry(
-                    lambda: self.verifier.verify(normalized, dag, counterexample_report),
+                    lambda counterexample_report=counterexample_report, dag=dag, normalized=normalized: self.verifier.verify(normalized, dag, counterexample_report),
                     record,
                     current_stage,
                     "Verification",
@@ -509,7 +510,7 @@ class Orchestrator:
                 self.registry.update_status(record.problem_id, current_stage, verify_reason)
 
                 formal_report, formalization_attempts, _ = self._run_with_retry(
-                    lambda: self.formalizer.generate(normalized, dag),
+                    lambda dag=dag, normalized=normalized: self.formalizer.generate(normalized, dag),
                     record,
                     current_stage,
                     "Formalization",
@@ -542,7 +543,7 @@ class Orchestrator:
                 self.registry.update_status(record.problem_id, current_stage, formal_reason)
 
                 paper_manifest, paper_attempts, _ = self._run_with_retry(
-                    lambda: self.paper_generator.generate(
+                    lambda dag=dag, formal_report=formal_report, normalized=normalized, verification=verification: self.paper_generator.generate(
                         normalized, dag, verification, formal_report
                     ),
                     record,
@@ -593,7 +594,7 @@ class Orchestrator:
                 self.registry.update_status(record.problem_id, current_stage, paper_reason)
 
                 submission_manifest, submission_attempts, _ = self._run_with_retry(
-                    lambda: self.submission_builder.build(
+                    lambda formal_report=formal_report, paper_manifest=paper_manifest, verification=verification: self.submission_builder.build(
                         paper_manifest, verification, formal_report
                     ),
                     record,

@@ -8,7 +8,7 @@ from pathlib import Path
 from aopl.apps.orchestrator import Orchestrator
 from aopl.core.gates import GatePolicy
 from aopl.core.io_utils import read_yaml, write_yaml
-from aopl.core.types import PipelineStage, ProblemRecord, ProofDAG, ProofNode
+from aopl.core.types import ProofDAG, ProofNode
 
 
 def prepare_project_root(tmp_path: Path) -> Path:

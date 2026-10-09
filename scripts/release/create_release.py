@@ -11,7 +11,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from release_common import load_incident_summary, summarize_doctor_failure
+from release_common import load_incident_summary, summarize_doctor_failure  # noqa: E402
 
 
 def run(command: list[str], cwd: Path) -> str:
