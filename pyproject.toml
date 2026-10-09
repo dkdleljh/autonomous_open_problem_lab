@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "autonomous-open-problem-lab"
-version = "0.1.0"
+version = "0.1.6"
 description = "완전 무인 자동화 수학 난제 수집·탐색·검증·논문화 시스템"
 readme = "README.md"
 requires-python = ">=3.11"

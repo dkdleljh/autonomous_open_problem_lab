@@ -195,3 +195,11 @@ python3 -m venv .venv
 - 운영 위험 감지 시 릴리즈 기본 차단, 수동 override 경로 제공
 
 최신 변경 이력은 [CHANGELOG.md](./CHANGELOG.md)에서 관리한다.
+
+<!-- BEGIN RELEASE STATUS -->
+## 최신 배포 정보
+
+- 저장소 버전: `v0.1.6`
+- [변경사항과 검증 범위](RELEASE_NOTES.md)
+- [GitHub 릴리즈](https://github.com/dkdleljh/autonomous_open_problem_lab/releases/latest)
+<!-- END RELEASE STATUS -->

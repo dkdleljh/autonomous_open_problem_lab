@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 
 from aopl.apps.orchestrator import Orchestrator
@@ -301,7 +302,7 @@ def test_orchestrator_escalates_repeated_transient_failure_to_permanent(tmp_path
                 "gate_name": "Normalize Retry",
                 "passed": False,
                 "reason": "Normalize 실행 예외: previous transient failure",
-                "timestamp": "2026-03-24T00:00:00+00:00",
+                "timestamp": datetime.now(UTC).isoformat(),
                 "metadata": {"failure_class": "transient"},
             },
             ensure_ascii=False,
@@ -447,7 +448,7 @@ def test_orchestrator_uses_stage_specific_escalation_threshold(tmp_path, monkeyp
                 "gate_name": "Normalize Retry",
                 "passed": False,
                 "reason": "recent transient failure",
-                "timestamp": "2026-03-24T00:00:00+00:00",
+                "timestamp": datetime.now(UTC).isoformat(),
                 "metadata": {"failure_class": "transient"},
             },
             ensure_ascii=False,
